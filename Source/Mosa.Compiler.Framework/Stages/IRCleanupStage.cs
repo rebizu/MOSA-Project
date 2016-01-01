@@ -8,7 +8,7 @@ namespace Mosa.Compiler.Framework.Stages
 	/// <summary>
 	///
 	/// </summary>
-	public class IRCleanup : EmptyBlockRemovalStage
+	public class IRCleanupStage : EmptyBlockRemovalStage
 	{
 		protected override void Run()
 		{
@@ -22,11 +22,19 @@ namespace Mosa.Compiler.Framework.Stages
 
 		private void OrderBlocks()
 		{
+			//var blockOrderAnalysis = new SimpleTraceBlockOrder();   // faster than others
 			var blockOrderAnalysis = new LoopAwareBlockOrder();
 
 			blockOrderAnalysis.PerformAnalysis(BasicBlocks);
 
-			BasicBlocks.ReorderBlocks(blockOrderAnalysis.NewBlockOrder);
+			var newBlockOrder = blockOrderAnalysis.NewBlockOrder;
+
+			if (HasProtectedRegions)
+			{
+				newBlockOrder = AddMissingBlocks(newBlockOrder, true);
+			}
+
+			BasicBlocks.ReorderBlocks(newBlockOrder);
 		}
 
 		private void RemoveNops()

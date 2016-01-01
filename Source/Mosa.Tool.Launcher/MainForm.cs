@@ -52,12 +52,13 @@ namespace Mosa.Tool.Launcher
 		{
 			Options.EnableSSA = cbEnableSSA.Checked;
 			Options.EnableIROptimizations = cbEnableIROptimizations.Checked;
+			Options.EnableVariablePromotion = cbEnableVariablePromotion.Checked;
 			Options.EnableSparseConditionalConstantPropagation = cbEnableSparseConditionalConstantPropagation.Checked;
 			Options.GenerateASMFile = cbGenerateASMFile.Checked;
 			Options.GenerateMapFile = cbGenerateMapFile.Checked;
 			Options.ExitOnLaunch = cbExitOnLaunch.Checked;
 			Options.MOSADebugger = cbMOSADebugger.Checked;
-			Options.CompilerUsesMultipleThreads = cbCompilerUsesMultipleThreads.Checked;
+			Options.UseMultipleThreadCompiler = cbCompilerUsesMultipleThreads.Checked;
 			Options.MemoryInMB = (uint)nmMemory.Value;
 			Options.EnableInlinedMethods = cbInlinedMethods.Checked;
 			Options.VBEVideo = cbVBEVideo.Checked;
@@ -153,13 +154,14 @@ namespace Mosa.Tool.Launcher
 		{
 			cbEnableSSA.Checked = Options.EnableSSA;
 			cbEnableIROptimizations.Checked = Options.EnableIROptimizations;
+			cbEnableVariablePromotion.Checked = Options.EnableVariablePromotion;
 			cbEnableSparseConditionalConstantPropagation.Checked = Options.EnableSparseConditionalConstantPropagation;
 			cbGenerateASMFile.Checked = Options.GenerateASMFile;
 			cbGenerateMapFile.Checked = Options.GenerateMapFile;
 			cbExitOnLaunch.Checked = Options.ExitOnLaunch;
 			cbMOSADebugger.Checked = Options.MOSADebugger;
 			cbInlinedMethods.Checked = Options.EnableInlinedMethods;
-			cbCompilerUsesMultipleThreads.Checked = Options.CompilerUsesMultipleThreads;
+			cbCompilerUsesMultipleThreads.Checked = Options.UseMultipleThreadCompiler;
 			nmMemory.Value = Options.MemoryInMB;
 			cbVBEVideo.Checked = Options.VBEVideo;
 

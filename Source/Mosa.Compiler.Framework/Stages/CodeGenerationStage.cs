@@ -115,7 +115,7 @@ namespace Mosa.Compiler.Framework.Stages
 						if (trace.Active)
 						{
 							trace.Log(String.Format("Block #{0} - Label L_{1:X4}", block.Sequence, block.Label)
-								   + (BasicBlocks.IsHeaderBlock(block) ? " [Header]" : string.Empty));
+								   + (BasicBlocks.IsHeadBlock(block) ? " [Header]" : string.Empty));
 						}
 					}
 
@@ -183,18 +183,6 @@ namespace Mosa.Compiler.Framework.Stages
 		/// </summary>
 		protected virtual void EndGenerate()
 		{
-			//HACK - for debugging
-			// Mosa.Platform.Internal.x86.Runtime::GetProtectedRegionEntryByAddress
-			//if (MethodCompiler.Method.FullName.Contains("Mosa.Platform.Internal.x86.Runtime::GetProtectedRegionEntryByAddress"))
-			//{
-			//	codeStream.Position = codeStream.Length - 1;
-			//	while (codeStream.Length < 1024)
-			//	{
-			//		codeStream.WriteByte(0);
-			//	}
-			//}
-			//ENDHACK
-
 			codeEmitter.ResolvePatches();
 		}
 

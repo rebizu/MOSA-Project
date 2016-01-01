@@ -103,22 +103,23 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Ldsfld(Context context)
 		{
-			MosaType type = context.MosaField.FieldType;
-			Operand source = Operand.CreateField(context.MosaField);
-			Operand destination = context.Result;
+			var fieldType = context.MosaField.FieldType;
+			var destination = context.Result;
 
-			if (MustSignExtendOnLoad(type))
+			var loadInstruction = IRInstruction.Load;
+
+			if (MustSignExtendOnLoad(fieldType))
 			{
-				context.SetInstruction(IRInstruction.SignExtendedMove, destination, source);
+				loadInstruction = IRInstruction.LoadSignExtended;
 			}
-			else if (MustZeroExtendOnLoad(type))
+			else if (MustZeroExtendOnLoad(fieldType))
 			{
-				context.SetInstruction(IRInstruction.ZeroExtendedMove, destination, source);
+				loadInstruction = IRInstruction.LoadZeroExtended;
 			}
-			else
-			{
-				context.SetInstruction(IRInstruction.Move, destination, source);
-			}
+
+			var size = GetInstructionSize(fieldType);
+			context.SetInstruction(loadInstruction, size, destination, Operand.CreateField(context.MosaField), ConstantZero);
+			context.MosaType = fieldType;
 		}
 
 		/// <summary>
@@ -236,6 +237,8 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Dup(Context context)
 		{
+			Debug.Assert(false); // should never get here
+
 			// We don't need the dup anymore.
 			context.Empty();
 		}
@@ -873,7 +876,7 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Cpblk(Context context)
 		{
-			ReplaceWithVmCall(context, VmCall.Memcpy);
+			ReplaceWithVmCall(context, VmCall.MemoryCopy);
 		}
 
 		/// <summary>
@@ -882,7 +885,7 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Initblk(Context context)
 		{
-			ReplaceWithVmCall(context, VmCall.Memset);
+			ReplaceWithVmCall(context, VmCall.MemorySet);
 		}
 
 		/// <summary>
@@ -1414,7 +1417,7 @@ namespace Mosa.Compiler.Framework.Stages
 			context.SetInstruction(IRInstruction.Nop);
 
 			// Setup context for VmCall
-			ReplaceWithVmCall(context, VmCall.Memset);
+			ReplaceWithVmCall(context, VmCall.MemorySet);
 
 			// Set the operands
 			context.SetOperand(1, ptr);

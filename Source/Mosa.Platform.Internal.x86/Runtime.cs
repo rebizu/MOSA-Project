@@ -141,7 +141,7 @@ namespace Mosa.Platform.Internal.x86
 			return obj;
 		}
 
-		public static void Memcpy(void* dest, void* src, uint count)
+		public static void MemoryCopy(void* dest, void* src, uint count)
 		{
 			ulong* _dest = (ulong*)dest;
 			ulong* _src = (ulong*)src;
@@ -163,7 +163,7 @@ namespace Mosa.Platform.Internal.x86
 				__dest[index] = __src[index];
 		}
 
-		public static void Memset(void* dest, byte value, uint count)
+		public static void MemorySet(void* dest, byte value, uint count)
 		{
 			ulong* _dest = (ulong*)dest;
 			uint byteCount = count & 7;
@@ -189,7 +189,7 @@ namespace Mosa.Platform.Internal.x86
 				__dest[index] = value;
 		}
 
-		public static void Memclr(void* dest, uint count)
+		public static void MemoryClear(void* dest, uint count)
 		{
 			ulong* _dest = (ulong*)dest;
 			uint byteCount = count & 7;
@@ -255,7 +255,7 @@ namespace Mosa.Platform.Internal.x86
 		public static void* Box(RuntimeTypeHandle handle, void* value, uint size)
 		{
 			byte* memory = (byte*)AllocateObject(handle, size);
-			Memcpy(memory + NativeIntSize * 2, value, size);
+			MemoryCopy(memory + NativeIntSize * 2, value, size);
 			return memory;
 		}
 
@@ -281,7 +281,7 @@ namespace Mosa.Platform.Internal.x86
 
 		public static void* Unbox(void* box, void* vt, uint size)
 		{
-			Memcpy(vt, (byte*)box + NativeIntSize * 2, size);
+			MemoryCopy(vt, (byte*)box + NativeIntSize * 2, size);
 			return vt;
 		}
 
@@ -413,7 +413,7 @@ namespace Mosa.Platform.Internal.x86
 					var exType = prDef->ExceptionType;
 
 					// If the handler is a finally clause, accept without testing
-					// If the handler is a exception clause, accept if the exception type is in the is within the inhertiance chain of the exception object
+					// If the handler is a exception clause, accept if the exception type is in the is within the inheritance chain of the exception object
 					if ((handlerType == ExceptionHandlerType.Finally) ||
 						(handlerType == ExceptionHandlerType.Exception && IsTypeInInheritanceChain(exType, exceptionType)))
 					{
@@ -481,11 +481,13 @@ namespace Mosa.Platform.Internal.x86
 			return InitializeMetadataString(methodDef->Name);
 		}
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static MetadataMethodStruct* GetMethodDefinitionFromStackFrameDepth(uint depth)
 		{
 			return GetMethodDefinitionFromStackFrameDepth(depth, 0);
 		}
 
+		[MethodImpl(MethodImplOptions.NoInlining)]
 		public static MetadataMethodStruct* GetMethodDefinitionFromStackFrameDepth(uint depth, uint ebp)
 		{
 			if (ebp == 0)
@@ -578,68 +580,6 @@ namespace Mosa.Platform.Internal.x86
 				// no handler in method, go up the stack
 				stackFrame = GetPreviousStackFrame(stackFrame);
 			}
-		}
-	}
-
-	/// <summary>
-	/// Holds information about a single stacktrace entry
-	/// </summary>
-	public struct SimpleStackTraceEntry
-	{
-		private string methodName;
-		public unsafe MetadataMethodStruct* MethodDefinition;
-		public uint Offset;
-
-		unsafe public string MethodName
-		{
-			get
-			{
-				if (MethodDefinition == null)
-					return null;
-				if (methodName == null)
-					methodName = Runtime.GetMethodDefinitionName(MethodDefinition);
-				return methodName;
-			}
-		}
-
-		/// <summary>
-		/// Returns a human readable text of this entry
-		/// </summary>
-		/// <returns></returns>
-		unsafe public StringBuffer ToStringBuffer()
-		{
-			var buf = new StringBuffer();
-
-			buf.Append("0x");
-			buf.Append((uint)MethodDefinition->Method, "X");
-			buf.Append("+0x");
-			buf.Append(Offset, "X");
-			buf.Append(" ");
-
-			var idx = MethodName.IndexOf(' ') + 1; //Skip return type
-			buf.Append(MethodName, idx);
-			return buf;
-		}
-
-		/// <summary>
-		/// Skip defines, if this entry should be displayed, or not.
-		/// </summary>
-		public bool Skip
-		{
-			get
-			{
-				{
-					if (!Valid) return true;
-					if (MethodName == null)
-						return true;
-					return MethodName.IndexOf("System.Void Mosa.Kernel.x86.Panic::") >= 0;
-				}
-			}
-		}
-
-		public bool Valid
-		{
-			get { return MethodName != null; }
 		}
 	}
 }

@@ -41,6 +41,13 @@ namespace Mosa.TinyCPUSimulator
 
 		public List<MemoryRegion> MemoryRegions { get; private set; }
 
+		public bool AcceleratorEnabled { get; set; }
+
+		public delegate void AccelerationMethod();
+
+		private List<ulong> AcceleratorAddresses;
+		private Dictionary<ulong, AccelerationMethod> AccelerationMethods;
+
 		private uint[][] MemoryBlocks;
 
 		private const uint BlockSize = 1024 * 1024; // 1 MB
@@ -57,7 +64,9 @@ namespace Mosa.TinyCPUSimulator
 			Symbols = new Dictionary<string, SimSymbol>();
 			Monitor = new SimMonitor(this);
 			MemoryRegions = new List<MemoryRegion>();
-
+			AcceleratorAddresses = new List<ulong>();
+			AcceleratorEnabled = true;
+			AccelerationMethods = new Dictionary<ulong, AccelerationMethod>();
 			Tick = 0;
 			IsLittleEndian = true;
 		}
@@ -74,6 +83,9 @@ namespace Mosa.TinyCPUSimulator
 			PortDevices = new BaseSimDevice[65536];
 			Symbols = simCPU.Symbols;
 			Monitor = new SimMonitor(this);
+			AcceleratorAddresses = new List<ulong>();
+			AcceleratorEnabled = simCPU.AcceleratorEnabled;
+			AccelerationMethods = new Dictionary<ulong, AccelerationMethod>();
 			MemoryRegions = simCPU.MemoryRegions;
 			Tick = simCPU.Tick;
 			IsLittleEndian = simCPU.IsLittleEndian;
@@ -114,6 +126,8 @@ namespace Mosa.TinyCPUSimulator
 
 				simCPU.MemoryBlocks[i].CopyTo(MemoryBlocks[i], 0);
 			}
+
+			RegisterAccelerationFunctions();
 		}
 
 		public void AddMemory(ulong address, ulong size, uint type)
@@ -138,6 +152,33 @@ namespace Mosa.TinyCPUSimulator
 			{
 				device.Reset();
 			}
+		}
+
+		public void RegisterAccelerationFunction(ulong address, AccelerationMethod method)
+		{
+			AcceleratorAddresses.Add(address);
+			AccelerationMethods.Add(address, method);
+		}
+
+		public void RegisterAccelerationMethod(string symbolName, AccelerationMethod method)
+		{
+			try
+			{
+				var symbol = GetSymbol(symbolName);
+
+				if (symbol == null)
+					return;
+
+				RegisterAccelerationFunction(symbol.Address, method);
+			}
+			catch (SimCPUException e)
+			{
+				return;
+			}
+		}
+
+		public virtual void RegisterAccelerationFunctions()
+		{
 		}
 
 		protected virtual ulong TranslateToPhysical(ulong address)
@@ -411,8 +452,6 @@ namespace Mosa.TinyCPUSimulator
 			// very slow performance if assert enabled
 			//Debug.Assert(DirectRead64(address) == value);
 
-			//Debug.WriteLine(address.ToString("X") + ": " + value.ToString("X"));
-
 			MemoryUpdate(address, 64);
 		}
 
@@ -429,8 +468,6 @@ namespace Mosa.TinyCPUSimulator
 
 			// very slow performance if assert enabled
 			//Debug.Assert(DirectRead32(address) == value);
-
-			//Debug.WriteLine(address.ToString("X") + ": " + value.ToString("X"));
 
 			MemoryUpdate(address, 32);
 		}
@@ -449,8 +486,6 @@ namespace Mosa.TinyCPUSimulator
 			// very slow performance if assert enabled
 			//Debug.Assert(DirectRead16(address) == value);
 
-			//Debug.WriteLine(address.ToString("X") + ": " + value.ToString("X"));
-
 			MemoryUpdate(address, 16);
 		}
 
@@ -460,8 +495,6 @@ namespace Mosa.TinyCPUSimulator
 
 			// very slow performance if assert enabled
 			//Debug.Assert(DirectRead8(address) == value);
-
-			//Debug.WriteLine(address.ToString("X") + ": " + value.ToString("X"));
 
 			MemoryUpdate(address, 8);
 		}
@@ -567,12 +600,23 @@ namespace Mosa.TinyCPUSimulator
 			return symbol;
 		}
 
+		private SimSymbol lastSymbol;
+
 		public SimSymbol FindSymbol(ulong address)
 		{
+			// check last result first - very high cache hit ratio
+			if (lastSymbol != null && address >= lastSymbol.Address && address < lastSymbol.EndAddress)
+			{
+				return lastSymbol;
+			}
+
 			foreach (var entry in Symbols)
 			{
 				if (address >= entry.Value.Address && address < entry.Value.EndAddress)
-					return entry.Value;
+				{
+					lastSymbol = entry.Value;
+					return lastSymbol;
+				}
 			}
 
 			return null;
@@ -746,7 +790,16 @@ namespace Mosa.TinyCPUSimulator
 
 				for (;;)
 				{
-					ExecuteInstruction();
+					if (AcceleratorEnabled && AcceleratorAddresses.Contains(CurrentProgramCounter))
+					{
+						var method = AccelerationMethods[CurrentProgramCounter];
+
+						method.Invoke();
+					}
+					else
+					{
+						ExecuteInstruction();
+					}
 
 					bool brk = Monitor.Break;
 
@@ -771,6 +824,83 @@ namespace Mosa.TinyCPUSimulator
 
 		public virtual void ExtendState(BaseSimState simState)
 		{
+		}
+
+		// Accelerator Functions
+		public void MemoryClear(ulong dest, uint count)
+		{
+			MemorySet(dest, 0, count);
+		}
+
+		public void MemorySet(ulong dest, byte value, uint count)
+		{
+			uint value4 = (uint)((value << 24) | (value << 16) | (value << 8) | value);
+			ulong value8 = (value4 << 32) | value4;
+
+			//FUTURE: Implement aligned 32bit versions
+			for (ulong at = 0; at < count; )
+			{
+				if ((at + 16) < count)
+				{
+					// 128bit
+					Write64(dest + at, value8);
+					Write64(dest + at + 8, value8);
+					at += 16;
+				}
+				else if ((at + 8) < count)
+				{
+					// 64bit
+					Write64(dest + at, value8);
+					at += 8;
+				}
+				else if ((at + 4) < count)
+				{
+					// 32bit
+					Write32(dest + at, value4);
+					at += 4;
+				}
+				else
+				{
+					// 8bit
+					Write8(dest + at, value);
+					at += 1;
+				}
+			}
+		}
+
+		public void MemoryCopy(ulong dest, ulong src, uint count)
+		{
+			//FUTURE: Implement aligned 32bit versions
+			for (ulong at = 0; at < count; )
+			{
+				if ((at + 16) < count)
+				{
+					// 128bit
+					var v1 = Read64(src + at);
+					var v2 = Read64(src + at + 8);
+					Write64(dest + at, v1);
+					Write64(dest + at + 8, v2);
+					at += 16;
+				}
+				else if ((at + 8) < count)
+				{
+					// 64bit
+					Write64(dest + at, Read64(src + at));
+					at += 8;
+				}
+				else if ((at + 4) < count)
+				{
+					// 32bit
+					Write32(dest + at, Read32(src + at));
+					at += 4;
+				}
+				else
+				{
+					// 8bit
+					Write8(dest + at, Read8(src + at));
+					at += 1;
+				}
+			}
 		}
 	}
 }

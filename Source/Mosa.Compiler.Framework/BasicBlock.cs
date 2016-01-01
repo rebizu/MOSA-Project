@@ -70,18 +70,12 @@ namespace Mosa.Compiler.Framework
 		/// <summary>
 		/// <True/> if this Block has following blocks
 		/// </summary>
-		public bool HasNextBlocks
-		{
-			get { return NextBlocks.Count > 0; }
-		}
+		public bool HasNextBlocks { get { return NextBlocks.Count > 0; } }
 
 		/// <summary>
 		/// <True/> if this Block has previous blocks
 		/// </summary>
-		public bool HasPreviousBlocks
-		{
-			get { return PreviousBlocks.Count > 0; }
-		}
+		public bool HasPreviousBlocks { get { return PreviousBlocks.Count > 0; } }
 
 		/// <summary>
 		/// Gets a value indicating whether this instance is prologue.
@@ -106,6 +100,10 @@ namespace Mosa.Compiler.Framework
 		/// <c>true</c> if this instance is compiler block; otherwise, <c>false</c>.
 		/// </value>
 		public bool IsCompilerBlock { get { return (Label >= CompilerBlockStartLabel) && (Label != EpilogueLabel); } }
+
+		public bool IsHandlerHeadBlock { get; internal set; }
+
+		public bool IsTryHeadBlock { get; internal set; }
 
 		#endregion Properties
 

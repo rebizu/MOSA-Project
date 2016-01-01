@@ -85,6 +85,7 @@ namespace Mosa.Utility.Launcher
 				Compiler.CompilerOptions.EnableSparseConditionalConstantPropagation = Options.EnableSparseConditionalConstantPropagation;
 				Compiler.CompilerOptions.EnableInlinedMethods = Options.EnableInlinedMethods;
 				Compiler.CompilerOptions.InlinedIRMaximum = Options.InlinedIRMaximum;
+				Compiler.CompilerOptions.EnableVariablePromotion = Options.EnableVariablePromotion;
 				Compiler.CompilerOptions.OutputFile = compiledFile;
 
 				Compiler.CompilerOptions.Architecture = SelectArchitecture(Options.PlatformType);
@@ -126,7 +127,7 @@ namespace Mosa.Utility.Launcher
 
 				Compiler.Load(inputFiles);
 
-				var threads = Options.CompilerUsesMultipleThreads ? Environment.ProcessorCount : 1;
+				var threads = Options.UseMultipleThreadCompiler ? Environment.ProcessorCount : 1;
 				Compiler.Execute(threads);
 
 				if (Options.ImageFormat == ImageFormat.ISO)
