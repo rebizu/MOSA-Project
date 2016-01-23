@@ -57,11 +57,11 @@ namespace Mosa.DeviceDriver.ScanCodeMap
                     case 23: key.Character = 'i'; break;
                     case 24: key.Character = 'o'; break;
                     case 25: key.Character = 'p'; break;
-                    case 26: key.Character = 'å'; break;
+                    case 26: key.Character = (char)134; break;//'å'; break;
                     case 27: key.Character = (char)168; break;
                     case 28: key.Character = '\n'; break;
                     case 29: key.KeyType = KeyType.LeftControl; break;
-                    case 30: key.Character = 'a'; break;
+                    case 30: key.Character = 'a'; break; 
                     case 31: key.Character = 's'; break;
                     case 32: key.Character = 'd'; break;
                     case 33: key.Character = 'f'; break;
@@ -70,8 +70,8 @@ namespace Mosa.DeviceDriver.ScanCodeMap
                     case 36: key.Character = 'j'; break;
                     case 37: key.Character = 'k'; break;
                     case 38: key.Character = 'l'; break;
-                    case 39: key.Character = 'æ'; break;
-                    case 40: key.Character = 'ø'; break;
+                    case 39: key.Character = (char)145; break;// 'æ'; break;
+                    case 40: key.Character = (char)148; break;// 'ø'; break;
                     case 41: key.Character = '½'; break;
                     case 42: key.KeyType = KeyType.LeftShift; break;
                     case 43: key.Character = '\''; break;
@@ -144,7 +144,7 @@ namespace Mosa.DeviceDriver.ScanCodeMap
                     case 151: key.Character = 'I'; break;
                     case 152: key.Character = 'O'; break;
                     case 153: key.Character = 'P'; break;
-                    case 154: key.Character = 'Å'; break;
+                    case 154: key.Character = (char)143; break;// 'Å'; break;
                     case 155: key.Character = (char)168; break;
                     case 156: key.Character = '\n'; break;
                     case 157: key.KeyType = KeyType.LeftControl; break;
@@ -157,8 +157,8 @@ namespace Mosa.DeviceDriver.ScanCodeMap
                     case 164: key.Character = 'J'; break;
                     case 165: key.Character = 'K'; break;
                     case 166: key.Character = 'L'; break;
-                    case 167: key.Character = 'Æ'; break;
-                    case 168: key.Character = 'Ø'; break;
+                    case 167: key.Character = (char)146; break;// 'Æ'; break;
+                    case 168: key.Character = (char)153; break;// 'Ø'; break;
                     case 169: key.Character = '½'; break;
                     case 170: key.KeyType = KeyType.LeftShift; break;
                     case 171: key.Character = '*'; break;
