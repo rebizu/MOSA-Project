@@ -120,6 +120,7 @@
     <Compile Include="PCI\VideoCard\VMwareSVGAII.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="ScanCodeMap\DK.cs" />
     <Compile Include="ScanCodeMap\US.cs">
       <SubType>Code</SubType>
     </Compile>
