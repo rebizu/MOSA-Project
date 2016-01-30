@@ -25,6 +25,9 @@ namespace Mosa.Compiler.Framework.Stages
 				if (!local.IsStackLocal)
 					continue;
 
+				if (local.IsPinned)
+					continue;
+
 				if (!local.IsReferenceType && !local.IsInteger && !local.IsR && !local.IsChar && !local.IsBoolean && !local.IsPointer)
 					continue;
 

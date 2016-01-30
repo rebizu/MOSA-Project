@@ -5,6 +5,7 @@ using Mosa.Compiler.Framework.IR;
 using Mosa.Compiler.Trace;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System;
 
 namespace Mosa.Compiler.Framework.Analysis
 {
@@ -90,8 +91,8 @@ namespace Mosa.Compiler.Framework.Analysis
 
 		public SparseConditionalConstantPropagation(BasicBlocks basicBlocks, ITraceFactory traceFactory)
 		{
-			this.TraceFactory = traceFactory;
-			this.BasicBlocks = basicBlocks;
+			TraceFactory = traceFactory;
+			BasicBlocks = basicBlocks;
 
 			MainTrace = CreateTrace("SparseConditionalConstantPropagation");
 

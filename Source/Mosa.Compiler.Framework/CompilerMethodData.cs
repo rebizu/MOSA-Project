@@ -12,11 +12,13 @@ namespace Mosa.Compiler.Framework
 	/// </summary>
 	public sealed class CompilerMethodData
 	{
+		public Counters Counters { get; private set; }
+
 		#region Properties
 
 		public MosaMethod Method { get; private set; }
 
-		public bool InvokesMethod { get; set; }
+		public bool InvokesAnyMethod { get { return Calls.Count != 0; } }
 
 		public bool IsCompiled { get; set; }
 
@@ -52,8 +54,6 @@ namespace Mosa.Compiler.Framework
 
 		#endregion Properties
 
-		#region Methods
-
 		public CompilerMethodData(MosaMethod mosaMethod)
 		{
 			if (mosaMethod == null)
@@ -61,10 +61,13 @@ namespace Mosa.Compiler.Framework
 
 			Method = mosaMethod;
 
-			this.Calls = new List<MosaMethod>();
-			this.CalledBy = new List<MosaMethod>();
-			this.CompileCount = 0;
+			Calls = new List<MosaMethod>();
+			CalledBy = new List<MosaMethod>();
+			Counters = new Counters();
+			CompileCount = 0;
 		}
+
+		#region Methods
 
 		public void AddCalledBy(MosaMethod method)
 		{

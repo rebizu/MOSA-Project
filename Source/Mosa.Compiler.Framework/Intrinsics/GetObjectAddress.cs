@@ -1,13 +1,13 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
-using Mosa.Compiler.Common;
 using Mosa.Compiler.Framework.IR;
 using System.Collections.Generic;
+using System;
 
 namespace Mosa.Compiler.Framework.Intrinsics
 {
-	[ReplacementTarget("Mosa.Internal.Intrinsic::GetObjectAddress")]
-	[ReplacementTarget("Mosa.Internal.Intrinsic::GetValueTypeAddress")]
+	[ReplacementTarget("Mosa.Runtime.Intrinsic::GetObjectAddress")]
+	[ReplacementTarget("Mosa.Runtime.Intrinsic::GetValueTypeAddress")]
 	public sealed class GetObjectAddress : IIntrinsicInternalMethod
 	{
 		/// <summary>
@@ -33,8 +33,12 @@ namespace Mosa.Compiler.Framework.Intrinsics
 
 				operand1 = def.Operand1;
 				def.Empty();
-				context.SetInstruction(IRInstruction.AddressOf, result, operand1);
-				return;
+
+				if (operand1.IsMemoryAddress)
+				{
+					context.SetInstruction(IRInstruction.AddressOf, result, operand1);
+					return;
+				}
 			}
 			context.SetInstruction(IRInstruction.Move, result, operand1);
 		}

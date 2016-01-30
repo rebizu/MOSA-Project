@@ -1,9 +1,10 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
 using Mosa.Compiler.Common;
-using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Mosa.Compiler.Linker
 {
@@ -31,6 +32,10 @@ namespace Mosa.Compiler.Linker
 		public ulong VirtualAddress { get; internal set; }
 
 		public List<LinkRequest> LinkRequests { get; private set; }
+
+		public string PreHash { get; internal set; }
+
+		public string PostHash { get; internal set; }
 
 		internal LinkerSymbol(string name, SectionKind kind, uint alignment)
 		{
@@ -75,9 +80,9 @@ namespace Mosa.Compiler.Linker
 			switch (patchSize)
 			{
 				case 8: current = (ulong)Stream.ReadByte(); break;
-				case 16: current = (ulong)Stream.ReadUInt16(endianness); break;
-				case 32: current = (ulong)Stream.ReadUInt32(endianness); break;
-				case 64: current = (ulong)Stream.ReadUInt64(endianness); break;
+				case 16: current = Stream.ReadUInt16(endianness); break;
+				case 32: current = Stream.ReadUInt32(endianness); break;
+				case 64: current = Stream.ReadUInt64(endianness); break;
 			}
 
 			Stream.Position = offset;
@@ -89,13 +94,34 @@ namespace Mosa.Compiler.Linker
 				case 8: Stream.WriteByte((byte)current); break;
 				case 16: Stream.Write((ushort)current, endianness); break;
 				case 32: Stream.Write((uint)current, endianness); break;
-				case 64: Stream.Write((ulong)current, endianness); break;
+				case 64: Stream.Write(current, endianness); break;
 			}
 		}
 
 		public override string ToString()
 		{
 			return SectionKind.ToString() + ": " + Name;
+		}
+
+		public string ComputeMD5Hash()
+		{
+			var md5 = MD5.Create();
+
+			if (Stream == null)
+				return string.Empty;
+
+			Stream.Position = 0;
+
+			var hash = md5.ComputeHash(Stream);
+
+			var s = new StringBuilder();
+
+			for (int i = 0; i < hash.Length; i++)
+			{
+				s.Append(hash[i].ToString("X2"));
+			}
+
+			return s.ToString();
 		}
 	}
 }

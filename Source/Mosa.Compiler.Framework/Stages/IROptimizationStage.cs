@@ -46,6 +46,7 @@ namespace Mosa.Compiler.Framework.Stages
 		private int constantFoldingLogicalOrCount = 0;
 		private int constantFoldingLogicalAndCount = 0;
 		private int combineIntegerCompareBranchCount = 0;
+		private int removeUselessIntegerCompareBranch = 0;
 		private int changeCount = 0;
 
 		private Stack<InstructionNode> worklist = new Stack<InstructionNode>();
@@ -106,6 +107,7 @@ namespace Mosa.Compiler.Framework.Stages
 			UpdateCounter("IROptimizations.BlockRemoved", blockRemovedCount);
 			UpdateCounter("IROptimizations.PromoteLocalVariable", promoteLocalVariableCount);
 			UpdateCounter("IROptimizations.Reduce64BitOperationsTo32Bit", reduce64BitOperationsTo32BitCount);
+			UpdateCounter("IROptimizations.RemoveUselessIntegerCompareBranch", removeUselessIntegerCompareBranch);
 
 			worklist = null;
 		}
@@ -203,6 +205,7 @@ namespace Mosa.Compiler.Framework.Stages
 				ConstantFoldingLogicalAnd,
 				CombineIntegerCompareBranch,
 				FoldIntegerCompare,
+				RemoveUselessIntegerCompareBranch,
 				FoldIntegerCompareBranch,
 				ReduceTruncationAndExpansion,
 				SimplifyExtendedMoveWithConstant,
@@ -324,6 +327,9 @@ namespace Mosa.Compiler.Framework.Stages
 					continue;
 
 				if (!local.IsStackLocal)
+					continue;
+
+				if (local.IsPinned)
 					continue;
 
 				if (local.Definitions.Count != 1)
@@ -456,10 +462,16 @@ namespace Mosa.Compiler.Framework.Stages
 
 		private bool CanCopyPropagation(Operand source, Operand destination)
 		{
-			if (source.IsPointer && destination.IsPointer)
+			if (source.IsReferenceType && destination.IsReferenceType)
 				return true;
 
-			if (source.IsReferenceType && destination.IsReferenceType)
+			if (source.IsUnmanagedPointer && destination.IsUnmanagedPointer)
+				return true;
+
+			if (source.IsManagedPointer && destination.IsManagedPointer)
+				return true;
+
+			if (source.IsFunctionPointer && destination.IsFunctionPointer)
 				return true;
 
 			if (source.Type.IsArray & destination.Type.IsArray & source.Type.ElementType == destination.Type.ElementType)
@@ -477,16 +489,16 @@ namespace Mosa.Compiler.Framework.Stages
 			if (source.Type.IsUI8 & destination.Type.IsUI8)
 				return true;
 
-			if (NativePointerSize == 4 && (destination.IsI || destination.IsU || destination.IsPointer) && (source.IsI4 || source.IsU4))
+			if (NativePointerSize == 4 && (destination.IsI || destination.IsU || destination.IsUnmanagedPointer) && (source.IsI4 || source.IsU4))
 				return true;
 
-			if (NativePointerSize == 4 && (source.IsI || source.IsU || source.IsPointer) && (destination.IsI4 || destination.IsU4))
+			if (NativePointerSize == 4 && (source.IsI || source.IsU || source.IsUnmanagedPointer) && (destination.IsI4 || destination.IsU4))
 				return true;
 
-			if (NativePointerSize == 8 && (destination.IsI || destination.IsU || destination.IsPointer) && (source.IsI8 || source.IsU8))
+			if (NativePointerSize == 8 && (destination.IsI || destination.IsU || destination.IsUnmanagedPointer) && (source.IsI8 || source.IsU8))
 				return true;
 
-			if (NativePointerSize == 8 && (source.IsI || source.IsU || source.IsPointer) && (destination.IsI8 || destination.IsU8))
+			if (NativePointerSize == 8 && (source.IsI || source.IsU || source.IsUnmanagedPointer) && (destination.IsI8 || destination.IsU8))
 				return true;
 
 			if (source.IsR4 && destination.IsR4)
@@ -495,7 +507,7 @@ namespace Mosa.Compiler.Framework.Stages
 			if (source.IsR8 && destination.IsR8)
 				return true;
 
-			if (source.IsI && destination.IsI)
+			if (((source.IsI || source.IsU) && (destination.IsI || destination.IsU)))
 				return true;
 
 			if (source.IsValueType || destination.IsValueType)
@@ -544,15 +556,6 @@ namespace Mosa.Compiler.Framework.Stages
 
 			if (ContainsAddressOf(destination))
 				return;
-
-			//if (destination != source)
-			//{
-			//	if (trace.Active) trace.Log("REMOVED:\t" + node.ToString());
-			//	AddOperandUsageToWorkList(node);
-			//	node.SetInstruction(IRInstruction.Nop);
-			//	instructionsRemovedCount++;
-			//	return;
-			//}
 
 			// for each statement T that uses operand, substituted c in statement T
 			AddOperandUsageToWorkList(node);
@@ -657,7 +660,7 @@ namespace Mosa.Compiler.Framework.Stages
 			}
 			else if (node.Instruction == IRInstruction.ShiftRight)
 			{
-				constant = Operand.CreateConstant(result.Type, ((ulong)op1.ConstantUnsignedLongInteger) >> (int)op2.ConstantUnsignedLongInteger);
+				constant = Operand.CreateConstant(result.Type, op1.ConstantUnsignedLongInteger >> (int)op2.ConstantUnsignedLongInteger);
 			}
 			else if (node.Instruction == IRInstruction.ShiftLeft)
 			{
@@ -719,7 +722,7 @@ namespace Mosa.Compiler.Framework.Stages
 			AddOperandUsageToWorkList(node);
 			if (trace.Active) trace.Log("*** ConstantFoldingIntegerCompare");
 			if (trace.Active) trace.Log("BEFORE:\t" + node.ToString());
-			node.SetInstruction(IRInstruction.Move, result, Operand.CreateConstant(result.Type, (int)(compareResult ? 1 : 0)));
+			node.SetInstruction(IRInstruction.Move, result, Operand.CreateConstant(result.Type, compareResult ? 1 : 0));
 			constantFoldingIntegerCompareCount++;
 			changeCount++;
 			if (trace.Active) trace.Log("AFTER: \t" + node.ToString());
@@ -939,7 +942,7 @@ namespace Mosa.Compiler.Framework.Stages
 			if (type.IsI1) return (ulong)((sbyte)value);
 			else if (type.IsI2) return (ulong)((short)value);
 			else if (type.IsI4) return (ulong)((int)value);
-			else if (type.IsI8) return (ulong)((long)value);
+			else if (type.IsI8) return (ulong)value;
 			else return (ulong)value;
 		}
 
@@ -1023,19 +1026,8 @@ namespace Mosa.Compiler.Framework.Stages
 					return;
 				}
 
-				if ((result.IsI4 || result.IsU4) && op2.ConstantUnsignedInteger == 0xFFFFFFFF)
-				{
-					AddOperandUsageToWorkList(node);
-					if (trace.Active) trace.Log("*** ArithmeticSimplificationLogicalOperators");
-					if (trace.Active) trace.Log("BEFORE:\t" + node.ToString());
-					node.SetInstruction(IRInstruction.Move, result, op1);
-					arithmeticSimplificationLogicalOperatorsCount++;
-					changeCount++;
-					if (trace.Active) trace.Log("AFTER: \t" + node.ToString());
-					return;
-				}
-
-				if ((result.IsI8 || result.IsU8) && op2.ConstantUnsignedLongInteger == 0xFFFFFFFFFFFFFFFF)
+				if (((result.IsI4 || result.IsU4 || result.IsI || result.IsU) && op2.ConstantUnsignedInteger == 0xFFFFFFFF)
+					|| ((result.IsI8 || result.IsU8) && op2.ConstantUnsignedLongInteger == 0xFFFFFFFFFFFFFFFF))
 				{
 					AddOperandUsageToWorkList(node);
 					if (trace.Active) trace.Log("*** ArithmeticSimplificationLogicalOperators");
@@ -1087,6 +1079,29 @@ namespace Mosa.Compiler.Framework.Stages
 		}
 
 		/// <summary>
+		/// Removes the unless integer compare branch.
+		/// </summary>
+		/// <param name="node">The node.</param>
+		private void RemoveUselessIntegerCompareBranch(InstructionNode node)
+		{
+			if (node.IsEmpty)
+				return;
+
+			if (node.Instruction != IRInstruction.IntegerCompareBranch)
+				return;
+
+			if (node.Block.NextBlocks.Count != 1)
+				return;
+
+			if (trace.Active) trace.Log("REMOVED:\t" + node.ToString());
+			AddOperandUsageToWorkList(node);
+			node.SetInstruction(IRInstruction.Nop);
+			instructionsRemovedCount++;
+			removeUselessIntegerCompareBranch++;
+			changeCount++;
+		}
+
+		/// <summary>
 		/// Folds integer compare branch.
 		/// </summary>
 		/// <param name="node">The node.</param>
@@ -1098,8 +1113,7 @@ namespace Mosa.Compiler.Framework.Stages
 			if (node.Instruction != IRInstruction.IntegerCompareBranch)
 				return;
 
-			if (node.OperandCount != 2)
-				return;
+			Debug.Assert(node.OperandCount == 2);
 
 			Operand op1 = node.Operand1;
 			Operand op2 = node.Operand2;

@@ -62,12 +62,15 @@ namespace Mosa.TinyCPUSimulator.TestSystem
 
 			moduleLoader.AddPrivatePath(System.IO.Directory.GetCurrentDirectory());
 			moduleLoader.LoadModuleFromFile("mscorlib.dll");
-			moduleLoader.LoadModuleFromFile("Mosa.Platform.Internal." + platform.Name + ".dll");
+			moduleLoader.LoadModuleFromFile("Mosa.Runtime.dll");
+			moduleLoader.LoadModuleFromFile("Mosa.Runtime." + platform.Name + ".dll");
 			moduleLoader.LoadModuleFromFile("Mosa.Test.Collection.dll");
 			moduleLoader.LoadModuleFromFile("Mosa.Kernel." + platform.Name + "Test.dll");
 
 			Compiler.Load(TypeSystem.Load(moduleLoader.CreateMetadata()));
 
+			//var threads = Compiler.CompilerOptions.UseMultipleThreadCompiler ? Environment.ProcessorCount : 1;
+			//Compiler.Execute(threads);
 			Compiler.Execute(Environment.ProcessorCount);
 
 			linker = Compiler.Linker as SimLinker;
@@ -124,7 +127,7 @@ namespace Mosa.TinyCPUSimulator.TestSystem
 
 				var symbol = linker.GetSymbol(runtimeMethod.FullName, SectionKind.Text);
 
-				ulong address = (ulong)symbol.VirtualAddress;
+				ulong address = symbol.VirtualAddress;
 
 				//Console.Write("Testing: " + ns + "." + type + "." + method);
 

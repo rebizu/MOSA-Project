@@ -4,6 +4,7 @@ using Mosa.Compiler.Common;
 using Mosa.Compiler.Framework.CIL;
 using Mosa.Compiler.Framework.IR;
 using Mosa.Compiler.MosaTypeSystem;
+using System.Diagnostics;
 
 namespace Mosa.Compiler.Framework.Stages
 {
@@ -38,10 +39,12 @@ namespace Mosa.Compiler.Framework.Stages
 			if (MethodCompiler.Method.IsLinkerGenerated)
 				return;
 
-			var plugMethod = MethodCompiler.Compiler.PlugSystem.GetPlugMethod(MethodCompiler.Method);
-
-			if (plugMethod != null)
+			if (IsPlugged)
 			{
+				var plugMethod = MethodCompiler.Compiler.PlugSystem.GetPlugMethod(MethodCompiler.Method);
+
+				Debug.Assert(plugMethod != null);
+
 				var plugSymbol = Operand.CreateSymbolFromMethod(TypeSystem, plugMethod);
 				var context = CreateNewBlockContext(-1);
 				context.AppendInstruction(IRInstruction.Jmp, null, plugSymbol);
@@ -119,9 +122,9 @@ namespace Mosa.Compiler.Framework.Stages
 					BasicBlocks.AddHeadBlock(block);
 					BasicBlocks.AddHandlerHeadBlock(block);
 				}
-				if (handler.FilterOffset != null)
+				if (handler.FilterStart != null)
 				{
-					var block = GetBlockByLabel(handler.FilterOffset.Value);
+					var block = GetBlockByLabel(handler.FilterStart.Value);
 					BasicBlocks.AddHeadBlock(block);
 					BasicBlocks.AddHandlerHeadBlock(block);
 				}

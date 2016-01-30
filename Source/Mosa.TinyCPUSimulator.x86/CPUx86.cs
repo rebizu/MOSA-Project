@@ -367,9 +367,9 @@ namespace Mosa.TinyCPUSimulator.x86
 
 		public override void RegisterAccelerationFunctions()
 		{
-			RegisterAccelerationMethod("System.Void Mosa.Platform.Internal.x86.Runtime::MemoryCopy(System.Void*, System.Void*, System.UInt32)", AcceleratorMemoryCopy);
-			RegisterAccelerationMethod("System.Void Mosa.Platform.Internal.x86.Runtime::MemorySet(System.Void*, System.Byte, System.UInt32)", AcceleratorMemorySet);
-			RegisterAccelerationMethod("System.Void Mosa.Platform.Internal.x86.Runtime::MemoryClear(System.Void*, System.UInt32)", AcceleratorMemoryClear);
+			RegisterAccelerationMethod("System.Void Mosa.Runtime.x86.Runtime::MemoryCopy(System.Void*, System.Void*, System.UInt32)", AcceleratorMemoryCopy);
+			RegisterAccelerationMethod("System.Void Mosa.Runtime.x86.Runtime::MemorySet(System.Void*, System.Byte, System.UInt32)", AcceleratorMemorySet);
+			RegisterAccelerationMethod("System.Void Mosa.Runtime.x86.Runtime::MemoryClear(System.Void*, System.UInt32)", AcceleratorMemoryClear);
 		}
 
 		private void AcceleratorMemoryClear()
@@ -385,7 +385,7 @@ namespace Mosa.TinyCPUSimulator.x86
 
 			MemoryClear(address, count);
 
-			ESP.Value = (uint)(ESP.Value + (32 / 8));
+			ESP.Value = ESP.Value + (32 / 8);
 			EIP.Value = ret;
 		}
 
@@ -404,7 +404,7 @@ namespace Mosa.TinyCPUSimulator.x86
 
 			MemorySet(address, (byte)value, count);
 
-			ESP.Value = (uint)(ESP.Value + (32 / 8));
+			ESP.Value = ESP.Value + (32 / 8);
 			EIP.Value = ret;
 		}
 
@@ -423,7 +423,7 @@ namespace Mosa.TinyCPUSimulator.x86
 
 			MemoryCopy(source, destination, count);
 
-			ESP.Value = (uint)(ESP.Value + (32 / 8));
+			ESP.Value = ESP.Value + (32 / 8);
 			EIP.Value = ret;
 		}
 	}

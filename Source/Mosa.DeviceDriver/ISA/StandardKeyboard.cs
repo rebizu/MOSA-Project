@@ -64,9 +64,9 @@ namespace Mosa.DeviceDriver.ISA
 			commandPort = base.hardwareResources.GetIOPort(0, 0);
 			dataPort = base.hardwareResources.GetIOPort(1, 0);
 
-			this.fifoBuffer = new byte[fifoSize];
-			this.fifoStart = 0;
-			this.fifoEnd = 0;
+			fifoBuffer = new byte[fifoSize];
+			fifoStart = 0;
+			fifoEnd = 0;
 
 			return true;
 		}
@@ -159,7 +159,11 @@ namespace Mosa.DeviceDriver.ISA
 		{
 			spinLock.Enter();
 
-			AddToFIFO(commandPort.Read8());
+			byte v = commandPort.Read8();
+
+			AddToFIFO(v);
+
+			HAL.DebugWrite(" scancode: " + v.ToString() + "   ");
 
 			spinLock.Exit();
 		}

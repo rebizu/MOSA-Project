@@ -1,7 +1,7 @@
 // Copyright (c) MOSA Project. Licensed under the New BSD License.
 
 using Mosa.DeviceSystem;
-using Mosa.Platform.Internal.x86;
+using Mosa.Runtime.x86;
 
 namespace Mosa.CoolWorld.x86.HAL
 {
@@ -95,7 +95,7 @@ namespace Mosa.CoolWorld.x86.HAL
 		/// <param name="value">The value.</param>
 		void IMemory.Write24(uint index, uint value)
 		{
-			Native.Set16(address + index, (ushort)(value & (uint)0xFFFF));
+			Native.Set16(address + index, (ushort)(value & 0xFFFF));
 			Native.Set8(address + index + 2, (byte)((value >> 16) & 0xFF));
 		}
 

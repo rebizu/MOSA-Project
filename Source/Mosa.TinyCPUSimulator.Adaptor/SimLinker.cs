@@ -1,10 +1,10 @@
 // Copyright (c) MOSA Project. Licensed under the New BSD License.
 
-using Mosa.Compiler.Common;
 using Mosa.Compiler.Linker;
 using Mosa.Compiler.Linker.Flat;
 using System.Collections.Generic;
 using System.IO;
+using System;
 
 namespace Mosa.TinyCPUSimulator.Adaptor
 {
@@ -87,7 +87,7 @@ namespace Mosa.TinyCPUSimulator.Adaptor
 
 			foreach (var symbol in Symbols)
 			{
-				simAdapter.SimCPU.SetSymbol(symbol.Name, symbol.VirtualAddress, (ulong)symbol.Size);
+				simAdapter.SimCPU.SetSymbol(symbol.Name, symbol.VirtualAddress, symbol.Size);
 			}
 
 			foreach (var symbol in symbolData)

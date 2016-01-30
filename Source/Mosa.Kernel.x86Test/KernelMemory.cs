@@ -1,7 +1,8 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
-using Mosa.Internal.Plug;
-using Mosa.Platform.Internal.x86;
+using Mosa.Runtime.Plug;
+using Mosa.Runtime.x86;
+using Mosa.Runtime;
 
 namespace Mosa.Kernel.x86Test
 {
@@ -14,7 +15,12 @@ namespace Mosa.Kernel.x86Test
 			GC.Setup();
 		}
 
-		[Method("Mosa.Platform.Internal.x86.GC.AllocateMemory")]
+		[Method("Mosa.Runtime.GC.AllocateMemory")]
+		static unsafe private void* _AllocateMemory(uint size)
+		{
+			return (void*)AllocateMemory(size);
+		}
+
 		static public uint AllocateMemory(uint size)
 		{
 			uint alloc = memoryPtr;

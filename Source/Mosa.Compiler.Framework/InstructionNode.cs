@@ -87,7 +87,7 @@ namespace Mosa.Compiler.Framework
 		/// <summary>
 		/// The order slot number (initialized by some stage)
 		/// </summary>
-		public int SlotNumber { get; set; }
+		public int Offset { get; set; }
 
 		/// <summary>
 		/// Gets the basic block of this instruction
@@ -357,7 +357,7 @@ namespace Mosa.Compiler.Framework
 		/// <summary>
 		/// Holds branch targets
 		/// </summary>
-		public IList<BasicBlock> BranchTargets { get { return (branchTargets == null) ? null : branchTargets.AsReadOnly(); } }
+		public List<BasicBlock> BranchTargets { get { return branchTargets; } }
 
 		/// <summary>
 		/// Gets the branch targets count.
@@ -449,7 +449,7 @@ namespace Mosa.Compiler.Framework
 		public byte ResultCount
 		{
 			get { return (byte)((packed >> 8) & 0xF); }
-			set { packed = (uint)((packed & 0xFFFFF0FF) | ((uint)value << 8)); }
+			set { packed = (packed & 0xFFFFF0FF) | ((uint)value << 8); }
 		}
 
 		/// <summary>
@@ -549,17 +549,17 @@ namespace Mosa.Compiler.Framework
 		/// </summary>
 		private void Clear()
 		{
-			this.Label = -1;
-			this.Instruction = null;
+			Label = -1;
+			Instruction = null;
 
 			ClearOperands();
 
-			this.packed = 0;
-			this.addition = null;
-			this.BranchHint = false;
-			this.ConditionCode = ConditionCode.Undefined;
-			this.Block = null;
-			this.branchTargets = null;
+			packed = 0;
+			addition = null;
+			BranchHint = false;
+			ConditionCode = ConditionCode.Undefined;
+			Block = null;
+			branchTargets = null;
 		}
 
 		/// <summary>
@@ -569,15 +569,15 @@ namespace Mosa.Compiler.Framework
 		{
 			ClearOperands();
 
-			this.Instruction = null;
-			this.packed = 0;
-			this.addition = null;
-			this.BranchHint = false;
-			this.ConditionCode = ConditionCode.Undefined;
+			Instruction = null;
+			packed = 0;
+			addition = null;
+			BranchHint = false;
+			ConditionCode = ConditionCode.Undefined;
 
 			Block.RemoveBranchInstruction(this);
 
-			this.branchTargets = null;
+			branchTargets = null;
 
 			//Block.DebugCheck();
 		}
@@ -896,6 +896,38 @@ namespace Mosa.Compiler.Framework
 					SetResult(i, replacement);
 				}
 			}
+		}
+
+		/// <summary>
+		/// Returns the 1st non empty node (including the current) by traversing the instructions forward
+		/// </summary>
+		/// <returns></returns>
+		public InstructionNode GoForwardToNonEmpty()
+		{
+			var node = this;
+
+			while (node.IsEmpty)
+			{
+				node = node.Next;
+			}
+
+			return node;
+		}
+
+		/// <summary>
+		/// Returns the 1st non empty node (including the current) by traversing the instructions backwards
+		/// </summary>
+		/// <returns></returns>
+		public InstructionNode GoBackwardsToNonEmpty()
+		{
+			var node = this;
+
+			while (node.IsEmpty)
+			{
+				node = node.Previous;
+			}
+
+			return node;
 		}
 
 		#endregion Methods

@@ -95,10 +95,14 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="InstructionNodeExtension.cs" />
     <Compile Include="InstructionNodeAddition.cs" />
+    <Compile Include="Intrinsics\CreateInstanceSimple.cs" />
+    <Compile Include="Intrinsics\GetAssemblyListTable.cs" />
     <Compile Include="Intrinsics\GetObjectFromAddress.cs" />
     <Compile Include="Intrinsics\Load64.cs" />
     <Compile Include="Intrinsics\InternalsForArray.cs" />
-    <Compile Include="IR\LeaveTarget.cs" />
+    <Compile Include="IR\FilterEnd.cs" />
+    <Compile Include="IR\FilterStart.cs" />
+    <Compile Include="IR\SetLeaveTarget.cs" />
     <Compile Include="IR\KillAllExcept.cs" />
     <Compile Include="IR\Flow.cs" />
     <Compile Include="MosaCompiler.cs" />
@@ -111,7 +115,7 @@
     <Compile Include="Intrinsics\InternalsForType.cs" />
     <Compile Include="IR\InternalCall.cs" />
     <Compile Include="IR\ExceptionEnd.cs" />
-    <Compile Include="IR\Leave.cs" />
+    <Compile Include="IR\GotoLeaveTarget.cs" />
     <Compile Include="IR\FinallyEnd.cs" />
     <Compile Include="IR\KillAll.cs" />
     <Compile Include="IR\ParamLoad.cs" />
@@ -154,6 +158,7 @@
     <Compile Include="RegisterAllocator\LiveInterval.cs" />
     <Compile Include="RegisterAllocator\VirtualRegister.cs" />
     <Compile Include="RegisterAllocator\GreedyRegisterAllocator.cs" />
+    <Compile Include="Stages\PreciseGCStage.cs" />
     <Compile Include="Stages\GraphVizStage.cs" />
     <Compile Include="Stages\ExceptionPrologueStage.cs" />
     <Compile Include="Stages\InlineStage.cs" />
@@ -171,7 +176,7 @@
     <Compile Include="Stages\StopStage.cs" />
     <Compile Include="Stages\BaseEdgeSplitStage.cs" />
     <Compile Include="Stages\EmptyBlockRemovalStage.cs" />
-    <Compile Include="Stages\JumpPeepholeOptimizationStage.cs" />
+    <Compile Include="Stages\JumpOptimizationStage.cs" />
     <Compile Include="Stages\PlatformEdgeSplitStage.cs" />
     <Compile Include="Stages\StackSetupStage.cs" />
     <Compile Include="Stages\GreedyRegisterAllocatorStage.cs" />
@@ -219,7 +224,7 @@
     <Compile Include="Platform\BasePlatformTransformationStage.cs" />
     <Compile Include="StackLayout.cs" />
     <Compile Include="Stages\PlugStage.cs" />
-    <Compile Include="Stages\ProtectedRegionStage.cs" />
+    <Compile Include="Stages\CILProtectedRegionStage.cs" />
     <Compile Include="IR\ExceptionStart.cs" />
     <Compile Include="Stages\MetadataStage.cs" />
     <Compile Include="Stages\EnterSSAStage.cs" />

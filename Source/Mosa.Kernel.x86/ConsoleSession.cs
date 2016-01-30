@@ -78,6 +78,9 @@ namespace Mosa.Kernel.x86
 			text = new byte[Columns * Rows];
 			textcolor = new byte[Columns * Rows];
 			ScrollRow = scrollRow;
+
+			Color = Colors.White;
+			BackgroundColor = Colors.Black;
 		}
 
 		/// <summary>
@@ -117,11 +120,11 @@ namespace Mosa.Kernel.x86
 			uint address = Row * Columns + Column;
 
 			text[address] = (byte)chr;
-			textcolor[address] = (byte)color;
+			textcolor[address] = color;
 
 			if (consoleManager != null)
 			{
-				consoleManager.RawWrite(this, Row, Column, chr, (byte)color);
+				consoleManager.RawWrite(this, Row, Column, chr, color);
 			}
 
 			Next();
@@ -133,7 +136,8 @@ namespace Mosa.Kernel.x86
 		/// <param name="value">The string value to write to the screen.</param>
 		public void Write(string value)
 		{
-			Assert.False(value == null);
+			if (value == null)
+				return;
 
 			for (int index = 0; index < value.Length; index++)
 			{
@@ -303,7 +307,7 @@ namespace Mosa.Kernel.x86
 
 			for (uint i = 0; i < count; i++)
 			{
-				uint digit = (uint)(val % digits);
+				uint digit = val % digits;
 				Column = x;
 				Row = y;
 				Skip(count - 1 - i);

@@ -1,9 +1,9 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
 using Mosa.Kernel.x86;
-using Mosa.Platform.Internal.x86;
+using Mosa.Runtime.x86;
 using Mosa.TestWorld.x86.Tests;
-using System.Diagnostics;
+using Mosa.Runtime;
 
 namespace Mosa.TestWorld.x86
 {
@@ -58,22 +58,17 @@ namespace Mosa.TestWorld.x86
 			Screen.Write('7');
 			VirtualPageAllocator.Setup();
 			Screen.Write('8');
-			ProcessManager.Setup();
-			Screen.Write('9');
 			GC.Setup();
-			Screen.Write('0');
+			Screen.Write('9');
 
 			//Runtime.Setup();
 			Screen.Write('A');
-			TaskManager.Setup();
-			Screen.Write('B');
 			IDT.SetInterruptHandler(ProcessInterrupt);
-			Screen.Write('C');
+			Screen.Write('B');
 			ConsoleManager.Setup();
-			Screen.Write('D');
+			Screen.Write('C');
 			Console = ConsoleManager.Controller.Boot;
-			Screen.Write('E');
-			Screen.Write('F');
+			Screen.Write('D');
 
 			Console.Color = 0x0E;
 			Console.BackgroundColor = 1;
@@ -84,8 +79,6 @@ namespace Mosa.TestWorld.x86
 			Console.WriteLine();
 
 			KernelTest.RunTests();
-
-			Console.WriteLine();
 
 			DumpStackTrace();
 
@@ -129,14 +122,12 @@ namespace Mosa.TestWorld.x86
 
 			while (true)
 			{
-				var methodDef = Runtime.GetMethodDefinitionFromStackFrameDepth(depth);
+				var methodDef = Mosa.Runtime.x86.Internal.GetMethodDefinitionFromStackFrameDepth(depth);
 
 				if (methodDef == null)
 					return;
 
-				Debug.Assert(methodDef != null, "methodDef == null");
-
-				string caller = Runtime.GetMethodDefinitionName(methodDef);
+				string caller = Mosa.Runtime.Internal.GetMethodDefinitionName(methodDef);
 
 				if (caller == null)
 					return;

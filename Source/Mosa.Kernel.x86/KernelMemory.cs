@@ -1,6 +1,6 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
-using Mosa.Internal.Plug;
+using Mosa.Runtime.Plug;
 
 namespace Mosa.Kernel.x86
 {
@@ -13,7 +13,12 @@ namespace Mosa.Kernel.x86
 		static private uint allocated = 0;
 		static private uint used = 0;
 
-		[Method("Mosa.Platform.Internal.x86.GC.AllocateMemory")]
+		[Method("Mosa.Runtime.GC.AllocateMemory")]
+		static unsafe private void* _AllocateMemory(uint size)
+		{
+			return (void*)AllocateMemory(size);
+		}
+
 		static public uint AllocateMemory(uint size)
 		{
 			if ((heap == 0) || (size > (allocated - used)))
@@ -21,7 +26,7 @@ namespace Mosa.Kernel.x86
 				// Go allocate memory
 
 				allocated = 1024 * 1024 * 64; // 64Mb
-				heap = x86.ProcessManager.AllocateMemory(0, allocated);
+				heap = VirtualPageAllocator.Reserve(size);
 				used = 0;
 			}
 

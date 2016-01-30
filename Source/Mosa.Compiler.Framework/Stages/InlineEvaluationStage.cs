@@ -18,24 +18,21 @@ namespace Mosa.Compiler.Framework.Stages
 		protected override void Run()
 		{
 			var method = MethodCompiler.Method;
-			var compilerMethod = MethodCompiler.Compiler.CompilerData.GetCompilerMethodData(method);
 
 			var trace = CreateTraceLog("Inline");
 
-			var plugMethod = MethodCompiler.Compiler.PlugSystem.GetPlugMethod(MethodCompiler.Method);
+			bool firstCompile = (MethodData.CompileCount == 0);
 
-			bool firstCompile = (compilerMethod.CompileCount == 0);
-
-			compilerMethod.BasicBlocks = null;
-			compilerMethod.IsCompiled = true;
-			compilerMethod.HasProtectedRegions = HasProtectedRegions;
-			compilerMethod.IsLinkerGenerated = method.IsLinkerGenerated;
-			compilerMethod.IsCILDecoded = (!method.IsLinkerGenerated && method.Code.Count > 0);
-			compilerMethod.HasLoops = false;
-			compilerMethod.IsPlugged = (plugMethod != null);
-			compilerMethod.IsVirtual = method.IsVirtual;
-			compilerMethod.HasDoNotInlineAttribute = false;
-			compilerMethod.HasAddressOfInstruction = false;
+			MethodData.BasicBlocks = null;
+			MethodData.IsCompiled = true;
+			MethodData.HasProtectedRegions = HasProtectedRegions;
+			MethodData.IsLinkerGenerated = method.IsLinkerGenerated;
+			MethodData.IsCILDecoded = (!method.IsLinkerGenerated && method.Code.Count > 0);
+			MethodData.HasLoops = false;
+			MethodData.IsPlugged = IsPlugged;
+			MethodData.IsVirtual = method.IsVirtual;
+			MethodData.HasDoNotInlineAttribute = false;
+			MethodData.HasAddressOfInstruction = false;
 
 			int totalIRCount = 0;
 			int totalNonIRCount = 0;
@@ -58,64 +55,69 @@ namespace Mosa.Compiler.Framework.Stages
 
 					if (node.Instruction == IRInstruction.AddressOf)
 					{
-						compilerMethod.HasAddressOfInstruction = true;
+						MethodData.HasAddressOfInstruction = true;
 					}
 				}
 
 				if (block.PreviousBlocks.Count > 1)
 				{
-					compilerMethod.HasLoops = true;
+					MethodData.HasLoops = true;
 				}
 			}
 
-			compilerMethod.IRInstructionCount = totalIRCount;
-			compilerMethod.NonIRInstructionCount = totalNonIRCount;
+			MethodData.IRInstructionCount = totalIRCount;
+			MethodData.NonIRInstructionCount = totalNonIRCount;
 
-			compilerMethod.HasDoNotInlineAttribute = !MethodCompiler.Method.IsNoInlining;
+			MethodData.HasDoNotInlineAttribute = MethodCompiler.Method.IsNoInlining;
 
-			if (!compilerMethod.HasDoNotInlineAttribute)
+			//if (!compilerMethod.HasDoNotInlineAttribute)
+			//{
+			//	// check attribute
+			//	// BUG: does not find the attribute
+			//	var methodAttribute = method.FindCustomAttribute(InlineMethodAttribute);
+
+			//	//TODO: check for specific attribute: System.Runtime.CompilerServices.MethodImplOptions.NoInlining
+			//	if (methodAttribute != null)
+			//	{
+			//		compilerMethod.HasDoNotInlineAttribute = true;
+			//	}
+			//}
+
+			MethodData.CanInline = CanInline(MethodData);
+
+			if (MethodData.CanInline)
 			{
-				// check attribute
-				// BUG: does not find the attribute
-				var methodAttribute = method.FindCustomAttribute(InlineMethodAttribute);
+				MethodData.BasicBlocks = CopyInstructions();
 
-				//TODO: check for specific attribute: System.Runtime.CompilerServices.MethodImplOptions.NoInlining
-				if (methodAttribute != null)
+				if (MethodData.CompileCount < MaximumCompileCount)
 				{
-					compilerMethod.HasDoNotInlineAttribute = true;
+					MethodCompiler.Compiler.CompilationScheduler.AddToInlineQueue(MethodData);
 				}
 			}
 
-			compilerMethod.CanInline = CanInline(compilerMethod);
+			//lock (compilerMethod)
+			//{
+			//	foreach (var called in compilerMethod.CalledBy)
+			//	{
+			//		var calledMethod = MethodCompiler.Compiler.CompilerData.GetCompilerMethodData(called);
 
-			if (compilerMethod.CanInline)
-			{
-				compilerMethod.BasicBlocks = CopyInstructions();
-			}
+			//		if (calledMethod.CompileCount < MaximumCompileCount)
+			//		{
+			//			MethodCompiler.Compiler.CompilationScheduler.Schedule(called);
+			//		}
+			//	}
+			//}
 
-			lock (compilerMethod)
-			{
-				foreach (var called in compilerMethod.CalledBy)
-				{
-					var calledMethod = MethodCompiler.Compiler.CompilerData.GetCompilerMethodData(called);
-
-					if (calledMethod.CompileCount < MaximumCompileCount)
-					{
-						MethodCompiler.Compiler.CompilationScheduler.Schedule(called);
-					}
-				}
-			}
-
-			trace.Log("CanInline: " + compilerMethod.CanInline.ToString());
-			trace.Log("IsVirtual: " + compilerMethod.IsVirtual.ToString());
-			trace.Log("HasLoops: " + compilerMethod.HasLoops.ToString());
-			trace.Log("HasProtectedRegions: " + compilerMethod.HasProtectedRegions.ToString());
-			trace.Log("IRInstructionCount: " + compilerMethod.IRInstructionCount.ToString());
-			trace.Log("NonIRInstructionCount: " + compilerMethod.NonIRInstructionCount.ToString());
-			trace.Log("HasDoNotInlineAttribute: " + compilerMethod.HasDoNotInlineAttribute.ToString());
+			trace.Log("CanInline: " + MethodData.CanInline.ToString());
+			trace.Log("IsVirtual: " + MethodData.IsVirtual.ToString());
+			trace.Log("HasLoops: " + MethodData.HasLoops.ToString());
+			trace.Log("HasProtectedRegions: " + MethodData.HasProtectedRegions.ToString());
+			trace.Log("IRInstructionCount: " + MethodData.IRInstructionCount.ToString());
+			trace.Log("NonIRInstructionCount: " + MethodData.NonIRInstructionCount.ToString());
+			trace.Log("HasDoNotInlineAttribute: " + MethodData.HasDoNotInlineAttribute.ToString());
 
 			UpdateCounter("InlineMethodEvaluationStage.MethodCount", 1);
-			if (compilerMethod.CanInline)
+			if (MethodData.CanInline)
 			{
 				UpdateCounter("InlineMethodEvaluationStage.CanInline", 1);
 			}
@@ -286,7 +288,7 @@ namespace Mosa.Compiler.Framework.Stages
 			}
 			else if (operand.IsStackLocal)
 			{
-				mappedOperand = Operand.CreateStackLocal(operand.Type, operand.Register, operand.Index);
+				mappedOperand = Operand.CreateStackLocal(operand.Type, operand.Register, operand.Index, operand.IsPinned);
 			}
 			else if (operand.IsVirtualRegister)
 			{

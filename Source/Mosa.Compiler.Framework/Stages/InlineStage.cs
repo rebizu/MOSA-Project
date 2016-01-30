@@ -20,12 +20,8 @@ namespace Mosa.Compiler.Framework.Stages
 			if (MethodCompiler.Method.IsLinkerGenerated && MethodCompiler.Method.Name == TypeInitializerSchedulerStage.TypeInitializerName)
 				return;
 
-			var compilerMethod = MethodCompiler.Compiler.CompilerData.GetCompilerMethodData(MethodCompiler.Method);
-
-			//bool firstCompile = (compilerMethod.CompileCount == 0);
-
-			compilerMethod.CompileCount++;
-			compilerMethod.Calls.Clear();
+			MethodData.CompileCount++;
+			MethodData.Calls.Clear();
 
 			var nodes = new List<InstructionNode>();
 
@@ -42,15 +38,14 @@ namespace Mosa.Compiler.Framework.Stages
 
 					nodes.Add(node);
 
-					//if (!firstCompile)
-					//	continue;
+					if (node.InvokeMethod == null)
+						continue;
 
 					Debug.Assert(node.InvokeMethod != null);
 
 					var invoked = MethodCompiler.Compiler.CompilerData.GetCompilerMethodData(node.InvokeMethod);
 
-					compilerMethod.InvokesMethod = true;
-					compilerMethod.Calls.AddIfNew(node.InvokeMethod);
+					MethodData.Calls.AddIfNew(node.InvokeMethod);
 
 					invoked.AddCalledBy(MethodCompiler.Method);
 				}
@@ -63,6 +58,9 @@ namespace Mosa.Compiler.Framework.Stages
 
 			foreach (var node in nodes)
 			{
+				if (node.InvokeMethod == null)
+					continue;
+
 				Debug.Assert(node.InvokeMethod != null);
 
 				var invoked = MethodCompiler.Compiler.CompilerData.GetCompilerMethodData(node.InvokeMethod);
@@ -86,8 +84,6 @@ namespace Mosa.Compiler.Framework.Stages
 				//System.Diagnostics.Debug.WriteLine(" * " + invoked.Method.FullName);
 
 				Inline(node, blocks);
-
-				//MethodCompiler.Stop();
 			}
 		}
 
@@ -214,7 +210,7 @@ namespace Mosa.Compiler.Framework.Stages
 			}
 			else if (operand.IsStackLocal)
 			{
-				mappedOperand = MethodCompiler.StackLayout.AddStackLocal(operand.Type);
+				mappedOperand = MethodCompiler.StackLayout.AddStackLocal(operand.Type, operand.IsPinned);
 			}
 			else if (operand.IsVirtualRegister)
 			{

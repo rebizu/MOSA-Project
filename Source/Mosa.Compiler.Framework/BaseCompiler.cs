@@ -65,7 +65,7 @@ namespace Mosa.Compiler.Framework
 		/// <summary>
 		/// Gets the counters.
 		/// </summary>
-		public Counters Counters { get; private set; }
+		public Counters GlobalCounters { get; private set; }
 
 		/// <summary>
 		/// Gets the scheduler.
@@ -94,6 +94,8 @@ namespace Mosa.Compiler.Framework
 		/// The type of the platform internal runtime.
 		/// </value>
 		public MosaType PlatformInternalRuntimeType { get; private set; }
+
+		public MosaType InternalRuntimeType { get; private set; }
 
 		/// <summary>
 		/// Gets the compiler data.
@@ -124,9 +126,9 @@ namespace Mosa.Compiler.Framework
 
 			PreCompilePipeline = new CompilerPipeline();
 			PostCompilePipeline = new CompilerPipeline();
-			Counters = new Counters();
+			GlobalCounters = new Counters();
 			PlugSystem = new PlugSystem();
-			CompilerData = new CompilerData(this);
+			CompilerData = new CompilerData();
 
 			// Create new dictionary
 			IntrinsicTypes = new Dictionary<string, Type>();
@@ -146,15 +148,16 @@ namespace Mosa.Compiler.Framework
 			}
 
 			PlatformInternalRuntimeType = GetPlatformInternalRuntimeType();
+			InternalRuntimeType = GeInternalRuntimeType();
 
 			// Extended Setup
 			ExtendCompilerSetup();
 
 			// Build the default pre-compiler pipeline
-			Architecture.ExtendPreCompilerPipeline(this.PreCompilePipeline);
+			Architecture.ExtendPreCompilerPipeline(PreCompilePipeline);
 
 			// Build the default post-compiler pipeline
-			Architecture.ExtendPostCompilerPipeline(this.PostCompilePipeline);
+			Architecture.ExtendPostCompilerPipeline(PostCompilePipeline);
 		}
 
 		/// <summary>
@@ -233,6 +236,16 @@ namespace Mosa.Compiler.Framework
 
 		public void ExecuteCompile()
 		{
+			ExecuteCompilePass();
+
+			while (CompilationScheduler.StartNextPass())
+			{
+				ExecuteCompilePass();
+			}
+		}
+
+		private void ExecuteCompilePass()
+		{
 			while (true)
 			{
 				var method = CompilationScheduler.GetMethodToCompile();
@@ -250,6 +263,16 @@ namespace Mosa.Compiler.Framework
 		}
 
 		public void ExecuteThreadedCompile(int threads)
+		{
+			ExecuteThreadedCompilePass(threads);
+
+			while (CompilationScheduler.StartNextPass())
+			{
+				ExecuteThreadedCompilePass(threads);
+			}
+		}
+
+		private void ExecuteThreadedCompilePass(int threads)
 		{
 			using (var finished = new CountdownEvent(1))
 			{
@@ -285,7 +308,7 @@ namespace Mosa.Compiler.Framework
 			}
 		}
 
-		public void CompileWorker(int threadID)
+		private void CompileWorker(int threadID)
 		{
 			while (true)
 			{
@@ -327,6 +350,14 @@ namespace Mosa.Compiler.Framework
 				NewCompilerTraceEvent(CompilerEvent.CompilerStageEnd, stage.Name);
 			}
 
+			// TODO: Add compiler option
+
+			// Sum up the counters
+			foreach (var methodData in CompilerData.MethodData)
+			{
+				GlobalCounters.Merge(methodData.Counters);
+			}
+
 			ExportCounters();
 		}
 
@@ -334,7 +365,7 @@ namespace Mosa.Compiler.Framework
 
 		protected void ExportCounters()
 		{
-			foreach (var counter in Counters.Export())
+			foreach (var counter in GlobalCounters.Export())
 			{
 				NewCompilerTraceEvent(CompilerEvent.Counter, counter);
 			}
@@ -369,16 +400,17 @@ namespace Mosa.Compiler.Framework
 		/// <param name="count">The count.</param>
 		protected void UpdateCounter(string name, int count)
 		{
-			Counters.UpdateCounter(name, count);
+			GlobalCounters.Update(name, count);
 		}
 
 		protected MosaType GetPlatformInternalRuntimeType()
 		{
-			string ns = "Mosa.Platform.Internal." + Architecture.PlatformName;
+			return TypeSystem.GetTypeByName("Mosa.Runtime." + Architecture.PlatformName, "Internal");
+		}
 
-			var type = TypeSystem.GetTypeByName(ns, "Runtime");
-
-			return type;
+		protected MosaType GeInternalRuntimeType()
+		{
+			return TypeSystem.GetTypeByName("Mosa.Runtime", "Internal");
 		}
 
 		#endregion Helper Methods

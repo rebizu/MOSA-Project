@@ -45,21 +45,21 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 
 		public BaseRegisterAllocator(BasicBlocks basicBlocks, VirtualRegisters compilerVirtualRegisters, StackLayout stackLayout, BaseArchitecture architecture, ITraceFactory traceFactory)
 		{
-			this.TraceFactory = traceFactory;
+			TraceFactory = traceFactory;
 
-			this.BasicBlocks = basicBlocks;
-			this.StackLayout = stackLayout;
-			this.Architecture = architecture;
+			BasicBlocks = basicBlocks;
+			StackLayout = stackLayout;
+			Architecture = architecture;
 
-			this.VirtualRegisterCount = compilerVirtualRegisters.Count;
-			this.PhysicalRegisterCount = architecture.RegisterSet.Length;
-			this.RegisterCount = VirtualRegisterCount + PhysicalRegisterCount;
+			VirtualRegisterCount = compilerVirtualRegisters.Count;
+			PhysicalRegisterCount = architecture.RegisterSet.Length;
+			RegisterCount = VirtualRegisterCount + PhysicalRegisterCount;
 
-			this.LiveIntervalTracks = new List<LiveIntervalTrack>(PhysicalRegisterCount);
-			this.VirtualRegisters = new List<VirtualRegister>(RegisterCount);
-			this.ExtendedBlocks = new List<ExtendedBlock>(basicBlocks.Count);
+			LiveIntervalTracks = new List<LiveIntervalTrack>(PhysicalRegisterCount);
+			VirtualRegisters = new List<VirtualRegister>(RegisterCount);
+			ExtendedBlocks = new List<ExtendedBlock>(basicBlocks.Count);
 
-			this.Trace = CreateTrace("Main");
+			Trace = CreateTrace("Main");
 
 			StackFrameRegister = architecture.StackFrameRegister;
 			StackPointerRegister = architecture.StackPointerRegister;
@@ -75,8 +75,8 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 					|| physicalRegister == StackPointerRegister
 					|| (ProgramCounter != null && physicalRegister == ProgramCounter));
 
-				this.VirtualRegisters.Add(new VirtualRegister(physicalRegister, reserved));
-				this.LiveIntervalTracks.Add(new LiveIntervalTrack(physicalRegister, reserved));
+				VirtualRegisters.Add(new VirtualRegister(physicalRegister, reserved));
+				LiveIntervalTracks.Add(new LiveIntervalTrack(physicalRegister, reserved));
 			}
 
 			// Setup extended virtual registers
@@ -84,7 +84,7 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 			{
 				Debug.Assert(virtualRegister.Index == VirtualRegisters.Count - PhysicalRegisterCount + 1);
 
-				this.VirtualRegisters.Add(new VirtualRegister(virtualRegister));
+				VirtualRegisters.Add(new VirtualRegister(virtualRegister));
 			}
 
 			PriorityQueue = new SimpleKeyPriorityQueue<LiveInterval>();
@@ -165,18 +165,6 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 
 		protected abstract void AdditionalSetup();
 
-		private static string ToString(BitArray bitArray)
-		{
-			var builder = new StringBuilder();
-
-			foreach (bool bit in bitArray)
-			{
-				builder.Append(bit ? "X" : ".");
-			}
-
-			return builder.ToString();
-		}
-
 		private void TraceBlocks()
 		{
 			var extendedBlockTrace = CreateTrace("Extended Blocks");
@@ -187,10 +175,10 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 			foreach (var block in ExtendedBlocks)
 			{
 				extendedBlockTrace.Log("Block # " + block.BasicBlock.Sequence.ToString() + " (" + block.Start + " destination " + block.End + ")");
-				extendedBlockTrace.Log(" LiveIn:   " + ToString(block.LiveIn));
-				extendedBlockTrace.Log(" LiveGen:  " + ToString(block.LiveGen));
-				extendedBlockTrace.Log(" LiveKill: " + ToString(block.LiveKill));
-				extendedBlockTrace.Log(" LiveOut:  " + ToString(block.LiveOut));
+				extendedBlockTrace.Log(" LiveIn:   " + block.LiveIn.ToString2());
+				extendedBlockTrace.Log(" LiveGen:  " + block.LiveGen.ToString2());
+				extendedBlockTrace.Log(" LiveKill: " + block.LiveKill.ToString2());
+				extendedBlockTrace.Log(" LiveOut:  " + block.LiveOut.ToString2());
 			}
 		}
 
@@ -271,10 +259,10 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 
 		private void CreateExtendedBlocks()
 		{
-			var blockOrder = new LoopAwareBlockOrder(this.BasicBlocks);
+			var blockOrder = new LoopAwareBlockOrder(BasicBlocks);
 
 			// The re-ordering is not strictly necessary; however, it reduces "holes" in live ranges.
-			// Less "holes" increase readability of the debug logs.
+			// And less "holes" improves the readability of the debug logs.
 			//basicBlocks.ReorderBlocks(loopAwareBlockOrder.NewBlockOrder);
 
 			// Allocate and setup extended blocks
@@ -301,14 +289,14 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 					if (node.IsEmpty)
 						continue;
 
-					node.SlotNumber = index;
+					node.Offset = index;
 					index = index + increment;
 
 					if (node.IsBlockEndInstruction)
 						break;
 				}
 
-				Debug.Assert(block.Last.SlotNumber != 0);
+				Debug.Assert(block.Last.Offset != 0);
 			}
 		}
 
@@ -338,7 +326,7 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 					if (node.IsEmpty)
 						continue;
 
-					string log = node.SlotNumber.ToString() + " = " + node.ToString();
+					string log = node.Offset.ToString() + " = " + node.ToString();
 
 					if (node.IsBlockStartInstruction)
 					{
@@ -386,7 +374,7 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 					//if (output.Count == 0 && input.Count == 0)
 					//	continue;
 
-					sb.Append(node.SlotNumber.ToString());
+					sb.Append(node.Offset.ToString());
 					sb.Append(" - ");
 
 					if (def.Count > 0)
@@ -683,9 +671,9 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 
 				if (liveSetTrace.Active)
 				{
-					liveSetTrace.Log("GEN:     " + ToString(block.LiveGen));
-					liveSetTrace.Log("KILL:    " + ToString(block.LiveKill));
-					liveSetTrace.Log("KILLNOT: " + ToString(block.LiveKillNot));
+					liveSetTrace.Log("GEN:     " + block.LiveGen.ToString2());
+					liveSetTrace.Log("KILL:    " + block.LiveKill.ToString2());
+					liveSetTrace.Log("KILLNOT: " + block.LiveKillNot.ToString2());
 					liveSetTrace.Log(string.Empty);
 				}
 			}
@@ -1025,7 +1013,7 @@ namespace Mosa.Compiler.Framework.RegisterAllocator
 
 				foreach (var intersection in intersections)
 				{
-					if (intersection.SpillCost >= liveInterval.SpillCost || intersection.SpillCost == Int32.MaxValue || intersection.VirtualRegister.IsPhysicalRegister || intersection.IsPhysicalRegister)
+					if (intersection.SpillCost >= liveInterval.SpillCost || intersection.SpillCost == int.MaxValue || intersection.VirtualRegister.IsPhysicalRegister || intersection.IsPhysicalRegister)
 					{
 						evict = false;
 						break;

@@ -1,7 +1,7 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
 using Mosa.Kernel.x86.Helpers;
-using Mosa.Platform.Internal.x86;
+using Mosa.Runtime.x86;
 
 namespace Mosa.Kernel.x86
 {
@@ -33,9 +33,9 @@ namespace Mosa.Kernel.x86
 		/// </summary>
 		/// <param name="address">The address.</param>
 		/// <returns></returns>
-		private static unsafe uint GetPageIndex(void* address)
+		private static uint GetPageIndex(uint address)
 		{
-			return (((uint)address) - Address.ReserveMemory) / PageFrameAllocator.PageSize;
+			return (address - Address.ReserveMemory) / PageFrameAllocator.PageSize;
 		}
 
 		/// <summary>
@@ -116,9 +116,9 @@ namespace Mosa.Kernel.x86
 		/// </summary>
 		/// <param name="address">The address.</param>
 		/// <param name="count">The count.</param>
-		public static unsafe void Release(uint address, uint count)
+		public static void Release(uint address, uint count)
 		{
-			uint start = GetPageIndex((void*)address);
+			uint start = GetPageIndex(address);
 			for (uint index = 0; index < count; index++)
 				SetPageStatus(start + index, true);
 		}

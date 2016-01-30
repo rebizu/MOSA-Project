@@ -1,6 +1,7 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
-using Mosa.Platform.Internal.x86;
+using Mosa.Runtime.x86;
+using Mosa.Runtime;
 
 namespace Mosa.Kernel.x86
 {
@@ -209,11 +210,6 @@ namespace Mosa.Kernel.x86
 			Write(val, 10, -1);
 		}
 
-		public static void Write(uint val, string format)
-		{
-			Write(new StringBuffer(val, format));
-		}
-
 		/// <summary>
 		/// Writes the specified value.
 		/// </summary>
@@ -239,7 +235,7 @@ namespace Mosa.Kernel.x86
 
 			for (uint i = 0; i < count; i++)
 			{
-				uint digit = (uint)(val % digits);
+				uint digit = val % digits;
 				Column = x;
 				Row = y;
 				Skip(count - 1 - i);

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Mosa.Compiler.Trace
 {
-	public enum TraceType { InstructionList, DebugTrace };
+	public enum TraceType { InstructionList, DebugTrace, Counters };
 
 	public class TraceLog
 	{
@@ -24,34 +24,34 @@ namespace Mosa.Compiler.Trace
 
 		protected TraceLog(TraceType type)
 		{
-			this.Type = type;
-			this.Active = true;
-			this.Lines = new List<string>();
+			Type = type;
+			Active = true;
+			Lines = new List<string>();
 		}
 
 		public TraceLog(TraceType type, MosaMethod method, string stage, bool active)
 			: this(type)
 		{
-			this.Stage = stage;
-			this.Method = method;
-			this.Active = active;
+			Stage = stage;
+			Method = method;
+			Active = active;
 		}
 
 		public TraceLog(TraceType type, MosaMethod method, string stage, string section, bool active)
 			: this(type)
 		{
-			this.Stage = stage;
-			this.Section = section;
-			this.Method = method;
-			this.Active = active;
+			Stage = stage;
+			Section = section;
+			Method = method;
+			Active = active;
 		}
 
 		public TraceLog(TraceType type, MosaMethod method, string stage, TraceFilter filter)
 			: this(type)
 		{
-			this.Stage = stage;
-			this.Method = method;
-			this.Active = filter.IsMatch(this.Method, this.Stage);
+			Stage = stage;
+			Method = method;
+			Active = filter.IsMatch(Method, Stage);
 		}
 
 		public void Log()
@@ -65,6 +65,17 @@ namespace Mosa.Compiler.Trace
 				return;
 
 			Lines.Add(line);
+		}
+
+		public void Log(IList<string> lines)
+		{
+			if (!Active)
+				return;
+
+			foreach (var line in lines)
+			{
+				Lines.Add(line);
+			}
 		}
 
 		public override string ToString()

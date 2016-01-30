@@ -365,7 +365,7 @@ namespace Mosa.TinyCPUSimulator
 			}
 			else if (offset == 2)
 			{
-				InternalWrite32Ex(address - 2, ((uint)value), 0x0000FFFF);
+				InternalWrite32Ex(address - 2, value, 0x0000FFFF);
 			}
 			else if (offset == 3)
 			{
@@ -838,7 +838,7 @@ namespace Mosa.TinyCPUSimulator
 			ulong value8 = (value4 << 32) | value4;
 
 			//FUTURE: Implement aligned 32bit versions
-			for (ulong at = 0; at < count; )
+			for (ulong at = 0; at < count;)
 			{
 				if ((at + 16) < count)
 				{
@@ -871,7 +871,7 @@ namespace Mosa.TinyCPUSimulator
 		public void MemoryCopy(ulong dest, ulong src, uint count)
 		{
 			//FUTURE: Implement aligned 32bit versions
-			for (ulong at = 0; at < count; )
+			for (ulong at = 0; at < count;)
 			{
 				if ((at + 16) < count)
 				{

@@ -1,7 +1,8 @@
 ﻿// Copyright (c) MOSA Project. Licensed under the New BSD License.
 
 using Mosa.Kernel.x86.Smbios;
-using Mosa.Platform.Internal.x86;
+using Mosa.Runtime.x86;
+using Mosa.Runtime;
 
 namespace Mosa.Kernel.x86
 {
@@ -27,14 +28,12 @@ namespace Mosa.Kernel.x86
 			PageFrameAllocator.Setup();
 			PageTable.Setup();
 			VirtualPageAllocator.Setup();
-			ProcessManager.Setup();
-			TaskManager.Setup();
 			GC.Setup();
 
 			// At this point we can use objects, that allocates memory
-			Runtime.Setup();
 			SmbiosManager.Setup();
 			ConsoleManager.Setup();
+			Mosa.Runtime.Internal.Setup();
 		}
 	}
 }

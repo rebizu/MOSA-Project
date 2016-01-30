@@ -30,6 +30,8 @@ namespace System.Collections.Generic
 			}
 		}
 
+		public bool IsEmpty { get { return first == null; } }
+
 		/// <summary>
 		/// Gets the first node of the LinkedList<T>.
 		/// </summary>
@@ -360,7 +362,7 @@ namespace System.Collections.Generic
 		/// <returns></returns>
 		public T[] ToArray()
 		{
-			T[] array = new T[this.count];
+			T[] array = new T[count];
 
 			LinkedListNode<T> cur = First;
 			uint index = 0;
@@ -430,7 +432,7 @@ namespace System.Collections.Generic
 
 			internal Enumerator(LinkedList<T> parent)
 			{
-				this.list = parent;
+				list = parent;
 				current = null;
 				index = -1;
 			}
@@ -442,7 +444,7 @@ namespace System.Collections.Generic
 					if (list == null)
 						throw new ObjectDisposedException(null);
 
-					return this.current.value;
+					return current.value;
 				}
 			}
 
@@ -483,7 +485,7 @@ namespace System.Collections.Generic
 
 			object IEnumerator.Current
 			{
-				get { return this.Current; }
+				get { return Current; }
 			}
 
 			void IEnumerator.Reset()

@@ -32,14 +32,14 @@ namespace Mosa.Compiler.Framework
 		private TypeInitializerSchedulerStage typeInitializer;
 
 		/// <summary>
-		/// Holds flag that will stop method compiler
-		/// </summary>
-		private bool stop;
-
-		/// <summary>
 		/// The empty operand list
 		/// </summary>
 		private static readonly Operand[] emptyOperandList = new Operand[0];
+
+		/// <summary>
+		/// Holds flag that will stop method compiler
+		/// </summary>
+		private bool stop;
 
 		#endregion Data Members
 
@@ -95,7 +95,7 @@ namespace Mosa.Compiler.Framework
 		public MosaTypeLayout TypeLayout { get; private set; }
 
 		/// <summary>
-		/// Gets the internal logging interface
+		/// Gets the compiler trace handle
 		/// </summary>
 		/// <value>The log.</value>
 		public CompilerTrace Trace { get; private set; }
@@ -139,12 +139,30 @@ namespace Mosa.Compiler.Framework
 		public IList<ProtectedRegion> ProtectedRegions { get; private set; }
 
 		/// <summary>
+		/// Gets a value indicating whether [plugged method].
+		/// </summary>
+		public MosaMethod PluggedMethod { get; private set; }
+
+		/// <summary>
+		/// Gets a value indicating whether this method is plugged.
+		/// </summary>
+		public bool IsPlugged { get { return PluggedMethod != null; } }
+
+		/// <summary>
 		/// Gets the thread identifier.
 		/// </summary>
 		/// <value>
 		/// The thread identifier.
 		/// </value>
 		public int ThreadID { get; private set; }
+
+		/// <summary>
+		/// Gets the method data.
+		/// </summary>
+		/// <value>
+		/// The method data.
+		/// </value>
+		public CompilerMethodData MethodData { get; private set; }
 
 		#endregion Properties
 
@@ -159,28 +177,29 @@ namespace Mosa.Compiler.Framework
 		/// <param name="threadID">The thread identifier.</param>
 		protected BaseMethodCompiler(BaseCompiler compiler, MosaMethod method, BasicBlocks basicBlocks, int threadID)
 		{
-			this.Compiler = compiler;
-			this.Method = method;
-			this.Type = method.DeclaringType;
-			this.Scheduler = compiler.CompilationScheduler;
-			this.Architecture = compiler.Architecture;
-			this.TypeSystem = compiler.TypeSystem;
-			this.TypeLayout = Compiler.TypeLayout;
-			this.Trace = Compiler.CompilerTrace;
-			this.Linker = compiler.Linker;
-			this.BasicBlocks = basicBlocks ?? new BasicBlocks();
-			this.Pipeline = new CompilerPipeline();
-			this.StackLayout = new StackLayout(Architecture, method.Signature.Parameters.Count + (method.HasThis || method.HasExplicitThis ? 1 : 0));
-			this.VirtualRegisters = new VirtualRegisters(Architecture);
-			this.LocalVariables = emptyOperandList;
-			this.ThreadID = threadID;
-			this.DominanceAnalysis = new Dominance(Compiler.CompilerOptions.DominanceAnalysisFactory, this.BasicBlocks);
+			Compiler = compiler;
+			Method = method;
+			Type = method.DeclaringType;
+			Scheduler = compiler.CompilationScheduler;
+			Architecture = compiler.Architecture;
+			TypeSystem = compiler.TypeSystem;
+			TypeLayout = compiler.TypeLayout;
+			Trace = compiler.CompilerTrace;
+			Linker = compiler.Linker;
+			BasicBlocks = basicBlocks ?? new BasicBlocks();
+			Pipeline = new CompilerPipeline();
+			StackLayout = new StackLayout(Architecture, method.Signature.Parameters.Count + (method.HasThis || method.HasExplicitThis ? 1 : 0));
+			VirtualRegisters = new VirtualRegisters(Architecture);
+			LocalVariables = emptyOperandList;
+			ThreadID = threadID;
+			DominanceAnalysis = new Dominance(Compiler.CompilerOptions.DominanceAnalysisFactory, BasicBlocks);
+			PluggedMethod = compiler.PlugSystem.GetPlugMethod(Method);
+			stop = false;
+
+			MethodData = compiler.CompilerData.GetCompilerMethodData(Method);
+			MethodData.Counters.Clear();
 
 			EvaluateParameterOperands();
-
-			this.stop = false;
-
-			Debug.Assert(this.Linker != null);
 		}
 
 		#endregion Construction
@@ -194,7 +213,7 @@ namespace Mosa.Compiler.Framework
 		{
 			int index = 0;
 
-			//FIXME! Note: displacement is recalculated later
+			// Note: displacement is recalculated later
 			int displacement = 4;
 
 			if (Method.HasThis || Method.HasExplicitThis)
@@ -241,6 +260,10 @@ namespace Mosa.Compiler.Framework
 
 			InitializeType();
 
+			var log = new TraceLog(TraceType.Counters, this.Method, string.Empty, Trace.TraceFilter.Active);
+			log.Log(MethodData.Counters.Export());
+			Trace.TraceListener.OnNewTraceLog(log);
+
 			EndCompile();
 		}
 
@@ -286,7 +309,7 @@ namespace Mosa.Compiler.Framework
 		/// <exception cref="System.ArgumentOutOfRangeException">The <paramref name="index"/> is not valid.</exception>
 		public Operand GetParameterOperand(int index)
 		{
-			return StackLayout.GetStackParameter(index);
+			return StackLayout.Parameters[index];
 		}
 
 		/// <summary>
@@ -297,22 +320,12 @@ namespace Mosa.Compiler.Framework
 		{
 			LocalVariables = new Operand[locals.Count];
 
-			for (int index = 0; index < locals.Count; index++)
+			int index = 0;
+			foreach (var local in locals)
 			{
-				var local = locals[index];
-				Operand operand;
+				var operand = StackLayout.AddStackLocal(local.Type, local.IsPinned);
 
-				if (local.Type.IsValueType || local.Type.IsPointer)
-				{
-					operand = StackLayout.AddStackLocal(local.Type);
-				}
-				else
-				{
-					var stacktype = local.Type.GetStackType();
-					operand = VirtualRegisters.Allocate(stacktype);
-				}
-
-				LocalVariables[index] = operand;
+				LocalVariables[index++] = operand;
 			}
 		}
 

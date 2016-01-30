@@ -15,7 +15,7 @@ namespace Mosa.Compiler.Linker
 
 		private Dictionary<string, LinkerSymbol> symbolLookup;
 
-		public string Name { get; private set; }
+		public string Name { get { return SectionKind.ToString(); } }
 
 		public SectionKind SectionKind { get; private set; }
 
@@ -33,9 +33,8 @@ namespace Mosa.Compiler.Linker
 
 		private object mylock = new object();
 
-		public LinkerSection(SectionKind sectionKind, string name, uint alignment)
+		public LinkerSection(SectionKind sectionKind, uint alignment)
 		{
-			Name = name;
 			SectionKind = sectionKind;
 			IsResolved = false;
 			symbolLookup = new Dictionary<string, LinkerSymbol>();

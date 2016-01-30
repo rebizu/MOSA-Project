@@ -66,10 +66,17 @@ namespace Mosa.Compiler.Framework
 		/// <summary>
 		/// Gets the type of the platform internal runtime.
 		/// </summary>
-		/// <value>
-		/// The type of the platform internal runtime.
-		/// </value>
-		protected MosaType PlatformInternalRuntimeType { get { return MethodCompiler.Compiler.PlatformInternalRuntimeType; } }
+		public MosaType PlatformInternalRuntimeType { get { return MethodCompiler.Compiler.PlatformInternalRuntimeType; } }
+
+		/// <summary>
+		/// Gets the type of the internal runtime.
+		/// </summary>
+		public MosaType InternalRuntimeType { get { return MethodCompiler.Compiler.InternalRuntimeType; } }
+
+		/// <summary>
+		/// Gets a value indicating whether this instance is plugged.
+		/// </summary>
+		public bool IsPlugged { get { return MethodCompiler.IsPlugged; } }
 
 		/// <summary>
 		/// Gets the size of the native instruction.
@@ -79,6 +86,14 @@ namespace Mosa.Compiler.Framework
 		/// </value>
 		protected InstructionSize NativeInstructionSize { get; private set; }
 
+		/// <summary>
+		/// Gets the method data.
+		/// </summary>
+		/// <value>
+		/// The method data.
+		/// </value>
+		protected CompilerMethodData MethodData { get; private set; }
+
 		#endregion Properties
 
 		#region IPipelineStage Members
@@ -87,7 +102,7 @@ namespace Mosa.Compiler.Framework
 		/// Retrieves the name of the compilation stage.
 		/// </summary>
 		/// <value>The name of the compilation stage.</value>
-		public virtual string Name { get { return this.GetType().Name; } }
+		public virtual string Name { get { return GetType().Name; } }
 
 		#endregion IPipelineStage Members
 
@@ -105,10 +120,11 @@ namespace Mosa.Compiler.Framework
 			TypeSystem = compiler.TypeSystem;
 			TypeLayout = compiler.TypeLayout;
 			CallingConvention = Architecture.CallingConvention;
-
 			NativePointerSize = Architecture.NativePointerSize;
 			NativeAlignment = Architecture.NativeAlignment;
 			NativeInstructionSize = Architecture.NativeInstructionSize;
+
+			MethodData = MethodCompiler.MethodData;
 
 			traceLogs = new List<TraceLog>();
 
@@ -558,7 +574,7 @@ namespace Mosa.Compiler.Framework
 		/// <param name="count">The count.</param>
 		public void UpdateCounter(string name, int count)
 		{
-			MethodCompiler.Compiler.Counters.UpdateCounter(name, count);
+			MethodData.Counters.Update(name, count);
 		}
 
 		/// <summary>
@@ -569,7 +585,7 @@ namespace Mosa.Compiler.Framework
 			Debug.WriteLine(string.Empty);
 
 			Debug.WriteLine("METHOD: " + MethodCompiler.Method.FullName);
-			Debug.WriteLine("STAGE : " + (before ? "[BEFORE] " : "[AFTER] ") + this.GetType().Name);
+			Debug.WriteLine("STAGE : " + (before ? "[BEFORE] " : "[AFTER] ") + GetType().Name);
 			Debug.WriteLine(string.Empty);
 
 			for (int index = 0; index < BasicBlocks.Count; index++)

@@ -516,10 +516,10 @@ namespace Mosa.Compiler.Framework.Stages
 					context.SetInstruction(IRInstruction.Load, NativeInstructionSize, typeDefinition, thisPtr, ConstantZero);
 
 					// Get the MethodDef pointer
-					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodDefinition, typeDefinition, Operand.CreateConstant(TypeSystem, (int)methodDefinitionOffset));
+					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodDefinition, typeDefinition, Operand.CreateConstant(TypeSystem, methodDefinitionOffset));
 
 					// Get the address of the method
-					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodPtr, methodDefinition, Operand.CreateConstant(TypeSystem, (int)methodPointerOffset));
+					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodPtr, methodDefinition, Operand.CreateConstant(TypeSystem, methodPointerOffset));
 				}
 				else
 				{
@@ -543,16 +543,16 @@ namespace Mosa.Compiler.Framework.Stages
 					context.SetInstruction(IRInstruction.Load, NativeInstructionSize, typeDefinition, thisPtr, ConstantZero);
 
 					// Get the Interface Slot Table pointer
-					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, interfaceSlotPtr, typeDefinition, Operand.CreateConstant(TypeSystem, (int)interfaceSlotTableOffset));
+					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, interfaceSlotPtr, typeDefinition, Operand.CreateConstant(TypeSystem, interfaceSlotTableOffset));
 
 					// Get the Interface Method Table pointer
-					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, interfaceMethodTablePtr, interfaceSlotPtr, Operand.CreateConstant(TypeSystem, (int)interfaceMethodTableOffset));
+					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, interfaceMethodTablePtr, interfaceSlotPtr, Operand.CreateConstant(TypeSystem, interfaceMethodTableOffset));
 
 					// Get the MethodDef pointer
-					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodDefinition, interfaceMethodTablePtr, Operand.CreateConstant(TypeSystem, (int)methodDefinitionOffset));
+					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodDefinition, interfaceMethodTablePtr, Operand.CreateConstant(TypeSystem, methodDefinitionOffset));
 
 					// Get the address of the method
-					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodPtr, methodDefinition, Operand.CreateConstant(TypeSystem, (int)methodPointerOffset));
+					context.AppendInstruction(IRInstruction.Load, NativeInstructionSize, methodPtr, methodDefinition, Operand.CreateConstant(TypeSystem, methodPointerOffset));
 				}
 
 				context.AppendInstruction(IRInstruction.Nop);
@@ -638,7 +638,7 @@ namespace Mosa.Compiler.Framework.Stages
 			ReplaceWithVmCall(context, VmCall.AllocateArray);
 
 			context.SetOperand(1, GetRuntimeTypeHandle(arrayType, context));
-			context.SetOperand(2, Operand.CreateConstant(TypeSystem, (int)elementSize));
+			context.SetOperand(2, Operand.CreateConstant(TypeSystem, elementSize));
 			context.SetOperand(3, lengthOperand);
 			context.OperandCount = 4;
 		}
@@ -683,7 +683,7 @@ namespace Mosa.Compiler.Framework.Stages
 			}
 
 			// Result is the this pointer, now invoke the real constructor
-			List<Operand> operands = new List<Operand>(context.Operands);
+			var operands = new List<Operand>(context.Operands);
 			operands.Insert(0, thisReference);
 
 			ProcessInvokeInstruction(context, context.InvokeMethod, null, operands);
@@ -799,7 +799,7 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Throw(Context context)
 		{
-			context.SetInstruction(IRInstruction.Throw, context.Result, context.Operand1);
+			throw new InvalidCompilerException();
 		}
 
 		/// <summary>
@@ -1015,7 +1015,7 @@ namespace Mosa.Compiler.Framework.Stages
 			Operand objectOperand = context.Operand1;
 
 			int offset = TypeLayout.GetFieldOffset(context.MosaField);
-			Operand fixedOffset = Operand.CreateConstant(TypeSystem, (int)offset);
+			Operand fixedOffset = Operand.CreateConstant(TypeSystem, offset);
 
 			context.SetInstruction(IRInstruction.AddUnsigned, fieldAddress, objectOperand, fixedOffset);
 		}
@@ -1069,7 +1069,7 @@ namespace Mosa.Compiler.Framework.Stages
 			var target = context.BranchTargets[0];
 
 			Operand first = context.Operand1;
-			Operand second = Operand.CreateConstant(TypeSystem, (int)0);
+			Operand second = Operand.CreateConstant(TypeSystem, 0);
 
 			CIL.OpCode opcode = ((CIL.BaseCILInstruction)context.Instruction).OpCode;
 
@@ -1156,12 +1156,14 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Ldelema(Context context)
 		{
-			Operand result = context.Result;
-			Operand arrayOperand = context.Operand1;
-			Operand arrayIndexOperand = context.Operand2;
-
-			MosaType arrayType = arrayOperand.Type;
+			var result = context.Result;
+			var arrayOperand = context.Operand1;
+			var arrayIndexOperand = context.Operand2;
+			var arrayType = arrayOperand.Type;
 			Debug.Assert(arrayType.ElementType == result.Type.ElementType);
+
+			// Array bounds check
+			AddArrayBoundsCheck(context.InsertBefore(), arrayOperand, arrayIndexOperand);
 
 			//
 			// The sequence we're emitting is:
@@ -1174,33 +1176,9 @@ namespace Mosa.Compiler.Framework.Stages
 			// which might change for other platforms. This is automatically calculated using the plaform native pointer size.
 			//
 
-			Operand arrayAddress = LoadArrayBaseAddress(context, arrayType, arrayOperand);
-			Operand elementOffset = CalculateArrayElementOffset(context, arrayType, arrayIndexOperand);
+			var arrayAddress = LoadArrayBaseAddress(context, arrayType, arrayOperand);
+			var elementOffset = CalculateArrayElementOffset(context, arrayType, arrayIndexOperand);
 			context.SetInstruction(IRInstruction.AddSigned, result, arrayAddress, elementOffset);
-		}
-
-		private Operand CalculateArrayElementOffset(Context context, MosaType arrayType, Operand arrayIndexOperand)
-		{
-			int elementSizeInBytes = 0, alignment = 0;
-			Architecture.GetTypeRequirements(TypeLayout, arrayType.ElementType, out elementSizeInBytes, out alignment);
-
-			Operand elementOffset = MethodCompiler.CreateVirtualRegister(TypeSystem.BuiltIn.I4);
-			Operand elementSizeOperand = Operand.CreateConstant(TypeSystem, (int)elementSizeInBytes);
-			context.InsertBefore().SetInstruction(IRInstruction.MulSigned, elementOffset, arrayIndexOperand, elementSizeOperand);
-
-			return elementOffset;
-		}
-
-		private Operand LoadArrayBaseAddress(Context context, MosaType arrayType, Operand arrayOperand)
-		{
-			var arrayPointer = arrayType.ElementType.ToManagedPointer();
-
-			Operand arrayAddress = MethodCompiler.CreateVirtualRegister(arrayPointer);
-			Operand fixedOffset = Operand.CreateConstant(TypeSystem, (NativePointerSize * 3));
-
-			context.InsertBefore().SetInstruction(IRInstruction.AddSigned, arrayAddress, arrayOperand, fixedOffset);
-
-			return arrayAddress;
 		}
 
 		/// <summary>
@@ -1209,13 +1187,15 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Ldelem(Context context)
 		{
-			Operand result = context.Result;
-			Operand arrayOperand = context.Operand1;
-			Operand arrayIndexOperand = context.Operand2;
+			var result = context.Result;
+			var arrayOperand = context.Operand1;
+			var arrayIndexOperand = context.Operand2;
+			var arraySigType = arrayOperand.Type;
 
-			MosaType arraySigType = arrayOperand.Type;
+			// Array bounds check
+			AddArrayBoundsCheck(context.InsertBefore(), arrayOperand, arrayIndexOperand);
 
-			BaseInstruction loadInstruction = IRInstruction.Load;
+			var loadInstruction = IRInstruction.Load;
 
 			if (MustSignExtendOnLoad(arraySigType.ElementType))
 			{
@@ -1237,8 +1217,8 @@ namespace Mosa.Compiler.Framework.Stages
 			// which might change for other platforms. This is automatically calculated using the plaform native pointer size.
 			//
 
-			Operand arrayAddress = LoadArrayBaseAddress(context, arraySigType, arrayOperand);
-			Operand elementOffset = CalculateArrayElementOffset(context, arraySigType, arrayIndexOperand);
+			var arrayAddress = LoadArrayBaseAddress(context, arraySigType, arrayOperand);
+			var elementOffset = CalculateArrayElementOffset(context, arraySigType, arrayIndexOperand);
 
 			Debug.Assert(elementOffset != null);
 
@@ -1254,13 +1234,16 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Stelem(Context context)
 		{
-			Operand arrayOperand = context.Operand1;
-			Operand arrayIndexOperand = context.Operand2;
-			Operand value = context.Operand3;
-			MosaType arrayType = arrayOperand.Type;
+			var arrayOperand = context.Operand1;
+			var arrayIndexOperand = context.Operand2;
+			var value = context.Operand3;
+			var arrayType = arrayOperand.Type;
 
-			Operand arrayAddress = LoadArrayBaseAddress(context, arrayType, arrayOperand);
-			Operand elementOffset = CalculateArrayElementOffset(context, arrayType, arrayIndexOperand);
+			// Array bounds check
+			AddArrayBoundsCheck(context.InsertBefore(), arrayOperand, arrayIndexOperand);
+
+			var arrayAddress = LoadArrayBaseAddress(context, arrayType, arrayOperand);
+			var elementOffset = CalculateArrayElementOffset(context, arrayType, arrayIndexOperand);
 
 			var size = GetInstructionSize(arrayType.ElementType);
 
@@ -1373,10 +1356,7 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Leave(Context context)
 		{
-			// If leave is inside a protected region it should have been processed by another stage and removed.
-			// If we reach here then the leave is not inside a protected region and must act like a branch.
-			// We must also tell the compiler to link the two blocks together
-			context.ReplaceInstructionOnly(IRInstruction.Jmp);
+			throw new InvalidCompilerException();
 		}
 
 		/// <summary>
@@ -1403,7 +1383,10 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="context">The context.</param>
 		void CIL.ICILVisitor.Endfilter(Context context)
 		{
-			throw new NotImplementCompilerException();
+			throw new InvalidCompilerException();
+
+			// Move this transformation to ProtectedRegionStage
+			//context.SetInstruction(IRInstruction.FilterEnd, context.Operand1);
 		}
 
 		/// <summary>
@@ -1506,11 +1489,79 @@ namespace Mosa.Compiler.Framework.Stages
 		#region Internals
 
 		/// <summary>
+		/// Calculates the element offset for the specified index.
+		/// </summary>
+		/// <param name="context">The context.</param>
+		/// <param name="arrayType">The array type.</param>
+		/// <param name="arrayIndexOperand">The index operand.</param>
+		/// <returns>Element offset operand.</returns>
+		private Operand CalculateArrayElementOffset(Context context, MosaType arrayType, Operand arrayIndexOperand)
+		{
+			int elementSizeInBytes = 0, alignment = 0;
+			Architecture.GetTypeRequirements(TypeLayout, arrayType.ElementType, out elementSizeInBytes, out alignment);
+
+			var elementOffset = MethodCompiler.CreateVirtualRegister(TypeSystem.BuiltIn.I4);
+			var elementSizeOperand = Operand.CreateConstant(TypeSystem, elementSizeInBytes);
+			context.InsertBefore().SetInstruction(IRInstruction.MulSigned, elementOffset, arrayIndexOperand, elementSizeOperand);
+
+			return elementOffset;
+		}
+
+		/// <summary>
+		/// Calculates the base of the array elements.
+		/// </summary>
+		/// <param name="context">The context.</param>
+		/// <param name="arrayType">The array type.</param>
+		/// <param name="arrayOperand">The array operand.</param>
+		/// <returns>Base address for array elements.</returns>
+		private Operand LoadArrayBaseAddress(Context context, MosaType arrayType, Operand arrayOperand)
+		{
+			var arrayPointer = arrayType.ElementType.ToManagedPointer();
+
+			var arrayAddress = MethodCompiler.CreateVirtualRegister(arrayPointer);
+			var fixedOffset = Operand.CreateConstant(TypeSystem, (NativePointerSize * 3));
+
+			context.InsertBefore().SetInstruction(IRInstruction.AddSigned, arrayAddress, arrayOperand, fixedOffset);
+
+			return arrayAddress;
+		}
+
+		/// <summary>
+		/// Adds bounds check to the array access.
+		/// </summary>
+		/// <param name="context">The context.</param>
+		/// <param name="arrayOperand">The array operand.</param>
+		/// <param name="arrayIndexOperand">The index operand.</param>
+		private void AddArrayBoundsCheck(Context context, Operand arrayOperand, Operand arrayIndexOperand)
+		{
+			// First create new block and split current block
+			var exceptionContext = CreateNewBlockContexts(1)[0];
+			var nextContext = Split(context);
+
+			// Get array length
+			var lengthOperand = MethodCompiler.CreateVirtualRegister(TypeSystem.BuiltIn.U4);
+			var fixedOffset = Operand.CreateConstant(TypeSystem, (NativePointerSize * 2));
+			context.SetInstruction(IRInstruction.Load, lengthOperand, arrayOperand, fixedOffset);
+
+			// Now compare length with index
+			// If index is greater than or equal to the length then jump to exception block, otherwise jump to next block
+			context.AppendInstruction(IRInstruction.IntegerCompareBranch, ConditionCode.UnsignedGreaterOrEqual, null, arrayIndexOperand, lengthOperand, exceptionContext.Block);
+			context.AppendInstruction(IRInstruction.Jmp, nextContext.Block);
+
+			// Build exception block which is just a call to throw exception
+			var method = InternalRuntimeType.FindMethodByName("ThrowIndexOutOfRangeException");
+			var symbolOperand = Operand.CreateSymbolFromMethod(TypeSystem, method);
+
+			exceptionContext.AppendInstruction(IRInstruction.Call, null, symbolOperand);
+			exceptionContext.InvokeMethod = method;
+		}
+
+		/// <summary>
 		/// Converts the specified opcode.
 		/// </summary>
 		/// <param name="opcode">The opcode.</param>
 		/// <returns></returns>
-		public static ConditionCode ConvertCondition(CIL.OpCode opcode)
+		private static ConditionCode ConvertCondition(CIL.OpCode opcode)
 		{
 			switch (opcode)
 			{
@@ -1892,12 +1943,12 @@ namespace Mosa.Compiler.Framework.Stages
 			if (destinationType.IsUI1)
 			{
 				mask = 0xFF;
-				return (destinationType.IsSigned ? (BaseInstruction)IRInstruction.SignExtendedMove : (BaseInstruction)IRInstruction.ZeroExtendedMove);
+				return (destinationType.IsSigned ? IRInstruction.SignExtendedMove : IRInstruction.ZeroExtendedMove);
 			}
 			else if (destinationType.IsUI2)
 			{
 				mask = 0xFFFF;
-				return destinationType.IsSigned ? (BaseInstruction)IRInstruction.SignExtendedMove : (BaseInstruction)IRInstruction.ZeroExtendedMove;
+				return destinationType.IsSigned ? IRInstruction.SignExtendedMove : IRInstruction.ZeroExtendedMove;
 			}
 			else if (destinationType.IsUI4)
 			{
@@ -2052,7 +2103,12 @@ namespace Mosa.Compiler.Framework.Stages
 		/// <param name="internalCallTarget">The internal call target.</param>
 		private void ReplaceWithVmCall(Context context, VmCall internalCallTarget)
 		{
-			var method = PlatformInternalRuntimeType.FindMethodByName(internalCallTarget.ToString());
+			var method = InternalRuntimeType.FindMethodByName(internalCallTarget.ToString());
+
+			if (method == null)
+			{
+				method = PlatformInternalRuntimeType.FindMethodByName(internalCallTarget.ToString());
+			}
 
 			Debug.Assert(method != null, "Cannot find method: " + internalCallTarget.ToString());
 

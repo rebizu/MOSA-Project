@@ -48,7 +48,8 @@ namespace System.Diagnostics
 		[Conditional("DEBUG")]
 		public static void Assert(bool condition, string message, string detailMessage)
 		{
-			throw new NotImplementedException(); //Plug
+			//throw new NotImplementedException(); //Plug
+			return;
 		}
 
 		[Conditional("DEBUG")]
@@ -149,7 +150,7 @@ namespace System.Diagnostics
 		[Conditional("DEBUG")]
 		public static void WriteLine(object value)
 		{
-			WriteLine(value, (string)null);
+			WriteLine(value, null);
 		}
 
 		[Conditional("DEBUG")]
